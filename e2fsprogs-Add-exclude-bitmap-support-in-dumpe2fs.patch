@@ -6,12 +6,8 @@ Exclude bitmap feature is needed by ext4 snapshot.  This patch adds
 exclude bitmap support in dumpe2fs.
 
 Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
----
- misc/dumpe2fs.c |   19 ++++++++++++++++++-
- 1 files changed, 18 insertions(+), 1 deletions(-)
-
 diff --git a/misc/dumpe2fs.c b/misc/dumpe2fs.c
-index 873058f..8e424b4 100644
+index 873058f..278de16 100644
 --- a/misc/dumpe2fs.c
 +++ b/misc/dumpe2fs.c
 @@ -117,6 +117,8 @@ static void print_bg_opts(ext2_filsys fs, dgrp_t i)
@@ -19,7 +15,7 @@ index 873058f..8e424b4 100644
  	print_bg_opt(bg_flags, EXT2_BG_INODE_UNINIT, "INODE_UNINIT",
   		     &first);
 +	print_bg_opt(bg_flags, EXT2_BG_EXCLUDE_UNINIT, "EXCLUDE_UNINIT",
-+ 		     &first);
++		     &first);
  	print_bg_opt(bg_flags, EXT2_BG_BLOCK_UNINIT, "BLOCK_UNINIT",
   		     &first);
  	print_bg_opt(bg_flags, EXT2_BG_INODE_ZEROED, "ITABLE_ZEROED",
@@ -28,7 +24,7 @@ index 873058f..8e424b4 100644
  	blk64_t	first_block, last_block;
  	blk64_t	super_blk, old_desc_blk, new_desc_blk;
 -	char *block_bitmap=NULL, *inode_bitmap=NULL;
-+	char *block_bitmap=NULL, *exclude_bitmap = NULL, *inode_bitmap=NULL;
++	char *block_bitmap = NULL, *exclude_bitmap = NULL, *inode_bitmap = NULL;
  	int inode_blocks_per_group, old_desc_blocks, reserved_gdt;
  	int		block_nbytes, inode_nbytes;
  	int has_super;
@@ -54,9 +50,9 @@ index 873058f..8e424b4 100644
 +			fputs(_("  Non-excluded blocks: "), stdout);
 +			ext2fs_get_exclude_bitmap_range2(fs->exclude_map,
 +				exclude_itr, block_nbytes << 3, exclude_bitmap);
-+			print_free (i, exclude_bitmap,
-+				    fs->super->s_blocks_per_group,
-+				    fs->super->s_first_data_block);
++			print_free(i, exclude_bitmap,
++				   fs->super->s_blocks_per_group,
++				   fs->super->s_first_data_block);
 +			fputc('\n', stdout);
 +			exclude_itr += fs->super->s_blocks_per_group;
 +		}
@@ -72,6 +68,3 @@ index 873058f..8e424b4 100644
  	if (inode_bitmap)
  		free(inode_bitmap);
  }
--- 
-1.7.5.1
-

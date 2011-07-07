@@ -133,7 +133,7 @@ index ac058e3..f8e67b0 100644
   * Pass 1b errors
   */
 diff --git a/e2fsck/super.c b/e2fsck/super.c
-index b5f0b4e..957b805 100644
+index b5f0b4e..092b554 100644
 --- a/e2fsck/super.c
 +++ b/e2fsck/super.c
 @@ -831,6 +831,20 @@ void check_super_block(e2fsck_t ctx)
@@ -141,7 +141,7 @@ index b5f0b4e..957b805 100644
  			ctx->invalid_bitmaps++;
  		}
 +		if (EXT2_HAS_COMPAT_FEATURE(fs->super,
-+			EXT2_FEATURE_COMPAT_EXCLUDE_BITMAP) && 
++			EXT2_FEATURE_COMPAT_EXCLUDE_BITMAP) &&
 +		    ((ext2fs_exclude_bitmap_loc(fs, i) < first_block) ||
 +		    (ext2fs_exclude_bitmap_loc(fs, i) > last_block))) {
 +			pctx.blk = ext2fs_exclude_bitmap_loc(fs, i);
@@ -157,15 +157,16 @@ index b5f0b4e..957b805 100644
  		if ((ext2fs_inode_bitmap_loc(fs, i) < first_block) ||
  		    (ext2fs_inode_bitmap_loc(fs, i) > last_block)) {
  			pctx.blk = ext2fs_inode_bitmap_loc(fs, i);
-@@ -864,6 +878,7 @@ void check_super_block(e2fsck_t ctx)
+@@ -864,6 +878,8 @@ void check_super_block(e2fsck_t ctx)
  		if (!ext2fs_group_desc_csum_verify(fs, i)) {
  			if (fix_problem(ctx, PR_0_GDT_CSUM, &pctx)) {
  				ext2fs_bg_flags_clear(fs, i, EXT2_BG_BLOCK_UNINIT);
-+				ext2fs_bg_flags_clear(fs, i, EXT2_BG_EXCLUDE_UNINIT);
++				ext2fs_bg_flags_clear(fs, i,
++						      EXT2_BG_EXCLUDE_UNINIT);
  				ext2fs_bg_flags_clear(fs, i, EXT2_BG_INODE_UNINIT);
  				ext2fs_bg_itable_unused_set(fs, i, 0);
  				should_be = 1;
-@@ -873,10 +888,12 @@ void check_super_block(e2fsck_t ctx)
+@@ -873,10 +889,12 @@ void check_super_block(e2fsck_t ctx)
  
  		if (!csum_flag &&
  		    (ext2fs_bg_flags_test(fs, i, EXT2_BG_BLOCK_UNINIT) ||
@@ -179,19 +180,20 @@ index b5f0b4e..957b805 100644
  				ext2fs_bg_itable_unused_set(fs, i, 0);
  				should_be = 1;
 diff --git a/e2fsck/util.c b/e2fsck/util.c
-index fb9a87a..8bb6cac 100644
+index fb9a87a..7801d0b 100644
 --- a/e2fsck/util.c
 +++ b/e2fsck/util.c
-@@ -223,7 +223,7 @@ void e2fsck_read_bitmaps(e2fsck_t ctx)
+@@ -223,7 +223,8 @@ void e2fsck_read_bitmaps(e2fsck_t ctx)
  		fatal_error(ctx, 0);
  	}
  
 -	old_op = ehandler_operation(_("reading inode and block bitmaps"));
-+	old_op = ehandler_operation(_("reading inode, exclude and block bitmaps"));
++	old_op = ehandler_operation(_("reading inode, exclude and block "
++				      "bitmaps"));
  	retval = ext2fs_read_bitmaps(fs);
  	ehandler_operation(old_op);
  	if (retval) {
-@@ -240,12 +240,14 @@ void e2fsck_write_bitmaps(e2fsck_t ctx)
+@@ -240,12 +241,14 @@ void e2fsck_write_bitmaps(e2fsck_t ctx)
  	errcode_t	retval;
  	const char	*old_op;
  

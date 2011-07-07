@@ -19,7 +19,7 @@ index 4de2c8d..dfff0a3 100644
  	__u32	offset_reserved[8];
  };
 diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-index 0dc46de..3c6c96c 100644
+index eedfcb5..6bffd91 100644
 --- a/lib/ext2fs/ext2fs.h
 +++ b/lib/ext2fs/ext2fs.h
 @@ -507,6 +507,7 @@ typedef struct ext2_icount *ext2_icount_t;
@@ -71,7 +71,7 @@ index 5a6d0b9..ffa78f2 100644
  		if (!fs->block_map) {
  			retval = ext2fs_read_block_bitmap(fs);
 diff --git a/lib/ext2fs/rw_bitmaps.c b/lib/ext2fs/rw_bitmaps.c
-index 736027f..1177408 100644
+index 92f110e..e0b8faf 100644
 --- a/lib/ext2fs/rw_bitmaps.c
 +++ b/lib/ext2fs/rw_bitmaps.c
 @@ -263,6 +263,7 @@ static errcode_t read_bitmaps(ext2_filsys fs, int do_inode, int do_block,
@@ -87,7 +87,7 @@ index 736027f..1177408 100644
  		blk = (fs->image_header->offset_blockmap /
  		       fs->blocksize);
 +		exclude_blk = (fs->image_header->offset_excludemap /
-+		     	       fs->blocksize);
++			       fs->blocksize);
  		blk_cnt = (blk64_t)EXT2_BLOCKS_PER_GROUP(fs->super) *
  			fs->group_desc_count;
  		while (block_nbytes > 0) {
