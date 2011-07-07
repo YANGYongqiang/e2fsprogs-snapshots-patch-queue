@@ -1,0 +1,372 @@
+chsnap: Control snapshot file status flags
+
+From: Amir Goldstein <amir73il@users.sf.net>
+
+Reuse the code in chattr and to control snapshot file status flags
+when chattr is invokes with prog_name chsnap.
+
+Snapshot file flags are written to kernel with new ioctl EXT2_IOC_SETSNAPFLAGS.
+
+The snapshot_file flag cannot be set on files and must be inherited from
+the directory in which the file is created (the snapshots directory).
+Set/clear the snapshot_file flag on snapshots directory with chattr +/-x.
+
+Snapshots are controlled by setting/clearing snapshot file status flags.
+Take snapshot with chsnap +S on a newly created snapshot file.
+Delete snapshot with chsnap -S (this doesn't unlink the file).
+Enable/disable snapshot read access with chsnap +/-n.
+
+Signed-off-by: Amir Goldstein <amir73il@users.sf.net>
+
+diff --git a/lib/e2p/Makefile.in b/lib/e2p/Makefile.in
+index 576be55..a9476dd 100644
+--- a/lib/e2p/Makefile.in
++++ b/lib/e2p/Makefile.in
+@@ -17,14 +17,14 @@ INSTALL = @INSTALL@
+ all::	e2p.pc
+ 
+ OBJS=		feature.o fgetflags.o fsetflags.o fgetversion.o fsetversion.o \
+-		fgetsnapflags.o \
++		fgetsnapflags.o fsetsnapflags.o \
+ 		getflags.o getversion.o hashstr.o iod.o ls.o mntopts.o \
+ 		parse_num.o pe.o pf.o ps.o setflags.o setversion.o uuid.o \
+ 		ostype.o percent.o
+ 
+ SRCS=		$(srcdir)/feature.c $(srcdir)/fgetflags.c \
+ 		$(srcdir)/fsetflags.c $(srcdir)/fgetversion.c \
+-		$(srcdir)/fgetsnapflags.c \
++		$(srcdir)/fgetsnapflags.c $(srcdir)/fsetsnapflags.c \
+ 		$(srcdir)/fsetversion.c $(srcdir)/getflags.c \
+ 		$(srcdir)/getversion.c $(srcdir)/hashstr.c $(srcdir)/iod.c \
+ 		$(srcdir)/ls.c $(srcdir)/mntopts.c $(srcdir)/parse_num.c \
+@@ -132,6 +132,8 @@ fsetflags.o: $(srcdir)/fsetflags.c $(srcdir)/e2p.h \
+  $(top_srcdir)/lib/ext2fs/ext2_fs.h $(top_builddir)/lib/ext2fs/ext2_types.h
+ fgetsnapflags.o: $(srcdir)/fgetsnapflags.c $(srcdir)/e2p.h \
+  $(top_srcdir)/lib/ext2fs/ext2_fs.h $(top_builddir)/lib/ext2fs/ext2_types.h
++fsetsnapflags.o: $(srcdir)/fsetsnapflags.c $(srcdir)/e2p.h \
++ $(top_srcdir)/lib/ext2fs/ext2_fs.h $(top_builddir)/lib/ext2fs/ext2_types.h
+ fgetversion.o: $(srcdir)/fgetversion.c $(srcdir)/e2p.h \
+  $(top_srcdir)/lib/ext2fs/ext2_fs.h $(top_builddir)/lib/ext2fs/ext2_types.h
+ fsetversion.o: $(srcdir)/fsetversion.c $(srcdir)/e2p.h \
+diff --git a/lib/e2p/e2p.h b/lib/e2p/e2p.h
+index 0dda09f..e64421b 100644
+--- a/lib/e2p/e2p.h
++++ b/lib/e2p/e2p.h
+@@ -30,6 +30,7 @@
+ 
+ 
+ int fgetsnapflags(const char * name, unsigned long * flags);
++int fsetsnapflags(const char * name, unsigned long flags);
+ int fgetflags (const char * name, unsigned long * flags);
+ int fgetversion (const char * name, unsigned long * version);
+ int fsetflags (const char * name, unsigned long flags);
+diff --git a/lib/ext2fs/ext2_fs.h b/lib/ext2fs/ext2_fs.h
+index 614f284..63637fd 100644
+--- a/lib/ext2fs/ext2_fs.h
++++ b/lib/ext2fs/ext2_fs.h
+@@ -327,6 +327,7 @@ struct ext4_new_group_input {
+ #define EXT2_IOC_GROUP_ADD		_IOW('f', 8,struct ext2_new_group_input)
+ #define EXT4_IOC_GROUP_ADD		_IOW('f', 8,struct ext4_new_group_input)
+ #define EXT2_IOC_GETSNAPFLAGS		_IOR('f', 13, long)
++#define EXT2_IOC_SETSNAPFLAGS		_IOW('f', 14, long)
+ 
+ /*
+  * Snapshot status/control flags for lssnap/chsnap.
+diff --git a/misc/Makefile.in b/misc/Makefile.in
+index 8e48a57..11e5fc9 100644
+--- a/misc/Makefile.in
++++ b/misc/Makefile.in
+@@ -36,7 +36,7 @@ SMANPAGES=	tune2fs.8 mklost+found.8 mke2fs.8 dumpe2fs.8 badblocks.8 \
+ FMANPAGES=	mke2fs.conf.5
+ 
+ UPROGS=		chattr lsattr @UUID_CMT@ uuidgen
+-UMANPAGES=	chattr.1 lsattr.1 lssnap.1 @UUID_CMT@ uuidgen.1
++UMANPAGES=	chattr.1 lsattr.1 chsnap.1 lssnap.1 @UUID_CMT@ uuidgen.1
+ 
+ LPROGS=		@E2INITRD_PROG@
+ 
+@@ -392,6 +392,10 @@ lssnap.1: $(DEP_SUBSTITUTE) $(srcdir)/lssnap.1.in
+ 	$(E) "	SUBST $@"
+ 	$(Q) $(SUBSTITUTE_UPTIME) $(srcdir)/lssnap.1.in lssnap.1 
+ 
++chsnap.1: $(DEP_SUBSTITUTE) $(srcdir)/chsnap.1.in 
++	$(E) "	SUBST $@"
++	$(Q) $(SUBSTITUTE_UPTIME) $(srcdir)/chsnap.1.in chsnap.1 
++
+ uuidgen.1: $(DEP_SUBSTITUTE) $(srcdir)/uuidgen.1.in 
+ 	$(E) "	SUBST $@"
+ 	$(Q) $(SUBSTITUTE_UPTIME) $(srcdir)/uuidgen.1.in uuidgen.1 
+@@ -447,6 +451,8 @@ install: all $(SMANPAGES) $(UMANPAGES) installdirs
+ 	done
+ 	$(Q) $(INSTALL_PROGRAM) lsattr \
+ 		$(DESTDIR)$(root_sbindir)/lssnap
++	$(Q) $(INSTALL_PROGRAM) chattr \
++		$(DESTDIR)$(root_sbindir)/chsnap
+ 	$(Q) for i in $(SMANPAGES); do \
+ 		for j in $(COMPRESS_EXT); do \
+ 			$(RM) -f $(DESTDIR)$(man8dir)/$$i.$$j; \
+@@ -541,7 +547,7 @@ uninstall:
+ 	for i in $(UMANPAGES); do \
+ 		$(RM) -f $(DESTDIR)$(man1dir)/$$i; \
+ 	done
+-	for i in $(FINDFS_LINK) e2label lssnap ; do \
++	for i in $(FINDFS_LINK) e2label lssnap chsnap ; do \
+ 		$(RM) -f $(DESTDIR)$(root_sbindir)/$$i; \
+ 	done
+ 	for i in $(FMANPAGES); do \
+diff --git a/misc/chattr.1.in b/misc/chattr.1.in
+index 92f6d70..9f4dfb4 100644
+--- a/misc/chattr.1.in
++++ b/misc/chattr.1.in
+@@ -19,7 +19,7 @@ chattr \- change file attributes on a Linux file system
+ .B chattr
+ changes the file attributes on a Linux file system.
+ .PP
+-The format of a symbolic mode is +-=[acdeijstuADST].
++The format of a symbolic mode is +-=[acdeijstuxADST].
+ .PP
+ The operator `+' causes the selected attributes to be added to the
+ existing attributes of the files; `-' causes them to be removed; and
+@@ -28,8 +28,9 @@ existing attributes of the files; `-' causes them to be removed; and
+ The letters `acdeijstuADST' select the new attributes for the files:
+ append only (a), compressed (c), no dump (d), extent format (e), immutable (i),
+ data journalling (j), secure deletion (s), no tail-merging (t), 
+-undeletable (u), no atime updates (A), synchronous directory updates (D), 
+-synchronous updates (S), and top of directory hierarchy (T).
++undeletable (u), snapshots directory (x), no atime updates (A),
++synchronous directory updates (D), synchronous updates (S)
++and top of directory hierarchy (T).
+ .PP
+ The following attributes are read-only, and may be listed by
+ .BR lsattr (1)
+@@ -139,6 +140,11 @@ saved.  This allows the user to ask for its undeletion.  Note: please
+ make sure to read the bugs and limitations section at the end of this
+ document.
+ .PP
++The 'x' attribute is used by the experimental snapshots patches to 
++indicate that a file is a special snapshot file or a directory containing
++snapshot files.  It currently may not be set or reset on files, but only
++on the directory in which snapshot files are created.
++.PP
+ The 'X' attribute is used by the experimental compression patches to 
+ indicate that a raw contents of a compressed file can be accessed
+ directly.  It currently may not be set or reset using 
+diff --git a/misc/chattr.c b/misc/chattr.c
+index de33b08..67eced5 100644
+--- a/misc/chattr.c
++++ b/misc/chattr.c
+@@ -56,6 +56,8 @@
+ 
+ static const char * program_name = "chattr";
+ 
++static int chsnap;
++
+ static int add;
+ static int rem;
+ static int set;
+@@ -81,8 +83,14 @@ static unsigned long sf;
+ 
+ static void usage(void)
+ {
++	if (chsnap) {
++		fprintf(stderr,
++			_("Usage: %s [-RVf] [-+=Sn] snapshot files...\n"),
++			program_name);
++		exit(1);
++	}
+ 	fprintf(stderr,
+-		_("Usage: %s [-RVf] [-+=AacDdeijsSu] [-v version] files...\n"),
++		_("Usage: %s [-RVf] [-+=AacDdeijsSux] [-v version] files...\n"),
+ 		program_name);
+ 	exit(1);
+ }
+@@ -92,7 +100,7 @@ struct flags_char {
+ 	char 		optchar;
+ };
+ 
+-static const struct flags_char flags_array[] = {
++static const struct flags_char ext2_flags_array[] = {
+ 	{ EXT2_NOATIME_FL, 'A' },
+ 	{ EXT2_SYNC_FL, 'S' },
+ 	{ EXT2_DIRSYNC_FL, 'D' },
+@@ -106,6 +114,16 @@ static const struct flags_char flags_array[] = {
+ 	{ EXT2_UNRM_FL, 'u' },
+ 	{ EXT2_NOTAIL_FL, 't' },
+ 	{ EXT2_TOPDIR_FL, 'T' },
++	{ EXT4_SNAPFILE_FL, 'x' },
++	{ 0, 0 }
++};
++
++static const struct flags_char *flags_array = ext2_flags_array;
++
++/* Snapshot dynamic state flags */
++static struct flags_char snapshot_flags_array[] = {
++	{ 1UL<<EXT4_SNAPSHOT_LIST, 'S' },
++	{ 1UL<<EXT4_SNAPSHOT_ENABLED, 'n' },
+ 	{ 0, 0 }
+ };
+ 
+@@ -193,6 +211,7 @@ static int change_attributes(const char * name)
+ 	unsigned long flags;
+ 	STRUCT_STAT	st;
+ 	int extent_file = 0;
++	int ret;
+ 
+ 	if (LSTAT (name, &st) == -1) {
+ 		if (!silent)
+@@ -201,7 +220,11 @@ static int change_attributes(const char * name)
+ 		return -1;
+ 	}
+ 
+-	if (fgetflags(name, &flags) == -1) {
++	if (chsnap)
++		ret = fgetsnapflags (name, &flags);
++	else
++		ret = fgetflags (name, &flags);
++	if (ret == -1) {
+ 		if (!silent)
+ 			com_err(program_name, errno,
+ 					_("while reading flags on %s"), name);
+@@ -222,7 +245,11 @@ static int change_attributes(const char * name)
+ 			print_flags (stdout, sf, 0);
+ 			printf ("\n");
+ 		}
+-		if (fsetflags (name, sf) == -1)
++		if (chsnap)
++			ret = fsetsnapflags (name, sf);
++		else
++			ret = fsetflags (name, sf);
++		if (ret == -1)
+ 			perror (name);
+ 	} else {
+ 		if (rem)
+@@ -243,7 +270,11 @@ static int change_attributes(const char * name)
+ 		}
+ 		if (!S_ISDIR(st.st_mode))
+ 			flags &= ~EXT2_DIRSYNC_FL;
+-		if (fsetflags(name, flags) == -1) {
++		if (chsnap)
++			ret = fsetsnapflags (name, flags);
++		else
++			ret = fsetflags (name, flags);
++		if (ret == -1) {
+ 			if (!silent) {
+ 				com_err(program_name, errno,
+ 						_("while setting flags on %s"),
+@@ -303,6 +334,11 @@ int main (int argc, char ** argv)
+ #endif
+ 	if (argc && *argv)
+ 		program_name = *argv;
++	i = strlen(program_name);
++	if (i >= 6 && !strcmp(program_name + i - 6, "chsnap")) {
++		flags_array = snapshot_flags_array;
++		chsnap = 1;
++	}
+ 	i = 1;
+ 	while (i < argc && !end_arg) {
+ 		/* '--' arg should end option processing */
+diff --git a/misc/chsnap.1.in b/misc/chsnap.1.in
+new file mode 100644
+index 0000000..ce3b09f
+--- /dev/null
++++ b/misc/chsnap.1.in
+@@ -0,0 +1,99 @@
++.\" -*- nroff -*-
++.TH CHSNAP 1 "@E2FSPROGS_MONTH@ @E2FSPROGS_YEAR@" "E2fsprogs version @E2FSPROGS_VERSION@"
++.SH NAME
++chsnap \- change snapshot file attributes on a Linux fourth extended file system
++.SH SYNOPSIS
++.B chsnap
++[
++.B \-RVf
++]
++[
++.B \-v
++.I version
++]
++[
++.I mode
++]
++.I files...
++.SH DESCRIPTION
++.B chsnap
++changes the snapshot file attributes on a Linux fourth extended file system.
++.PP
++The format of a symbolic mode is +-=[Sn].
++.PP
++The operator `+' causes the selected attributes to be added to the
++existing attributes of the files; `-' causes them to be removed; and
++`=' causes them to be the only attributes that the files have.
++.PP
++The letters `Sn' select the new attributes for the files:
++on snapshot list (S) and mount access enabled (n).
++.PP
++The following attributes are read-only, and may be listed by
++.BR lssnap (1)
++but not modified by chsnap: 
++active (a), in use by previous snapshot (p), request to be removed from the
++list (s), shrunk (h), open for read (o) and tagged (t).
++.SH OPTIONS
++.TP
++.B \-R
++Recursively change attributes of snapshot directories and their contents.
++.TP
++.B \-V
++Be verbose with chsnap's output and print the program version.
++.TP
++.B \-f
++Suppress most error messages.
++.TP
++.BI \-v " version"
++Set the snapshot file's version/generation number.
++.SH ATTRIBUTES
++A snapshot file with the 'S' attribute set is on the snapshot list.
++Setting the attribute on a new snapshot file means requesting to add it
++to the head of the list (i.e. snapshot take).
++Resetting the attribute on a snapshot file means requesting to remove it
++from the list (i.e. snapshot delete).
++.PP
++A snapshot file with the 'n' attribute set can be mounted via a loop device.
++The snapshot file's size is the size of the snapshot'ed file system.
++.PP
++The 'a' attribute indicates the active snapshot, which is the last snapshot
++taken.
++.PP
++The 'p' attribute indicates that the snapshot file is in use by a previous
++snapshot, which means that an older snapshot is enabled for mount.
++.PP
++The 's' attribute indicates that the snapshot was deleted.  It may not have
++been removed from the list yet, but it cannot be mounted anymore and it will
++be removed from the list as soon as no older snapshots depend on it.
++.PP
++The 'h' attribute indicates that the snapshot was deleted and shrunk.
++Shrinking a snapshot file means freeing blocks, which are not referenced
++by older snapshots.
++.PP
++The 'o' attribute indicates that the snapshot is open for read, mostly used
++as indication that the snapshot is mounted via a loop device.
++.PP
++The 't' attribute indicates that the snapshot is tagged.  This attribute is
++reserved for future use and has no special meaning at the moment.
++.PP
++.SH AUTHOR
++.B chsnap
++was copied from
++.B chattr
++by Amir Goldstein <amir73il@users.sf.net>.
++.B chattr
++was written by Remy Card <Remy.Card@linux.org>.  It is currently being
++maintained by Theodore Ts'o <tytso@alum.mit.edu>.
++.SH BUGS AND LIMITATIONS
++The snapshot file attributes can only be set on snapshot files, which are
++files created inside a snapshots directory.
++A snapshots directory is indicated by setting the 'x' flag via
++.BR chattr (1).
++Snapshot file are only supported by the ext4 filesystem when the experimental
++snapshot support feature is enabled.
++.SH AVAILABILITY
++.B chsnap
++is part of the e2fsprogs package and is available from
++http://e2fsprogs.sourceforge.net.
++.SH SEE ALSO
++.BR lssnap (1)
