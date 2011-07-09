@@ -24,3 +24,7 @@ Exclude bitmap:
 Snapshots:
 ----------
 - Set all snapshot related options on mke2fs -O snapshots
+
+Check:
+------
+- make check support
