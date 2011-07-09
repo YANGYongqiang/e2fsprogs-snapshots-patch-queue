@@ -1,5 +1,7 @@
 e4snapshots: ext4 snapshots management script
 
+From: Amir Goldstein <amir73il@users.sf.net>
+
 run 'e4snapshots help' for usage.
 insatll as snapshot.ext4dev to test snapshots on ext4dev fs.
 
