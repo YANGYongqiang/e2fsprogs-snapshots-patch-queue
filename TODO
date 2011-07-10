@@ -15,10 +15,10 @@ Patch series rearrangement:
 
 Exclude bitmap:
 ---------------
-- Allocate exclude bitmap on tune2fs -O exclude_bitmap
+- Test tune2fs -O [^]exclude_bitmap and tune2fs -O [^]has_snapshot
 - Test reset_exclude_bitmap() with uninit_bg
 - Implement reset_exclude_bitmap() without uninit_bg
-- Implement new resize
+- Test new resize
 - Verify either flex_bg OR !uninit_bg when setting exclude_bitmap
 
 Snapshots:
