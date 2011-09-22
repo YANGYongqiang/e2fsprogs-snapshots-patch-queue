@@ -412,21 +412,8 @@ index a9e2a97..04bc703 100644
  	if (src->badblocks) {
  		retval = ext2fs_badblocks_copy(src->badblocks, &fs->badblocks);
  		if (retval)
-diff --git a/lib/ext2fs/ext2_fs.h b/lib/ext2fs/ext2_fs.h
-index 9c09fc8..f7ebe09 100644
---- a/lib/ext2fs/ext2_fs.h
-+++ b/lib/ext2fs/ext2_fs.h
-@@ -682,7 +682,7 @@ struct ext2_super_block {
- #define EXT2_FEATURE_COMPAT_RESIZE_INODE	0x0010
- #define EXT2_FEATURE_COMPAT_DIR_INDEX		0x0020
- #define EXT2_FEATURE_COMPAT_LAZY_BG		0x0040
--#define EXT2_FEATURE_COMPAT_EXCLUDE_INODE	0x0080
-+/* #define EXT2_FEATURE_COMPAT_EXCLUDE_INODE	0x0080 not used */
- #define EXT2_FEATURE_COMPAT_EXCLUDE_BITMAP	0x0100
- 
- #define EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER	0x0001
 diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-index 6b82005..817abca 100644
+index d3eb31d..8c9f241 100644
 --- a/lib/ext2fs/ext2fs.h
 +++ b/lib/ext2fs/ext2fs.h
 @@ -184,6 +184,7 @@ typedef struct ext2_file *ext2_file_t;
@@ -464,7 +451,7 @@ index 6b82005..817abca 100644
  extern errcode_t ext2fs_allocate_block_bitmap(ext2_filsys fs,
  					      const char *descr,
  					      ext2fs_block_bitmap *ret);
-@@ -1511,6 +1516,14 @@ _INLINE_ void ext2fs_mark_bb_dirty(ext2_filsys fs)
+@@ -1509,6 +1514,14 @@ _INLINE_ void ext2fs_mark_bb_dirty(ext2_filsys fs)
  }
  
  /*
@@ -479,7 +466,7 @@ index 6b82005..817abca 100644
   * Check to see if a filesystem's inode bitmap is dirty
   */
  _INLINE_ int ext2fs_test_ib_dirty(ext2_filsys fs)
-@@ -1527,6 +1540,14 @@ _INLINE_ int ext2fs_test_bb_dirty(ext2_filsys fs)
+@@ -1525,6 +1538,14 @@ _INLINE_ int ext2fs_test_bb_dirty(ext2_filsys fs)
  }
  
  /*
@@ -800,15 +787,29 @@ index c01ffe5..873058f 100644
  		print_number(ext2fs_inode_bitmap_loc(fs, i));
  		print_bg_rel_offset(fs, ext2fs_inode_bitmap_loc(fs, i), 0,
 diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-index 046175b..1f324fa 100644
+index 9798b88..bc537b3 100644
 --- a/misc/mke2fs.c
 +++ b/misc/mke2fs.c
-@@ -1439,6 +1439,8 @@ profile_error:
- 			blocksize = sys_page_size;
- 			fs_param.s_log_block_size =
- 				int_log2(blocksize >> EXT2_MIN_BLOCK_LOG_SIZE);
-+			/* 3. create exclude bitmap */
-+			edit_feature("exclude_bitmap", &fs_param.s_feature_compat);
+@@ -1252,7 +1252,7 @@ profile_error:
+ 	}
+ 
+ 	while ((c = getopt (argc, argv,
+-		    "b:cf:g:G:i:jl:m:no:qr:s:t:vE:FI:J:KL:M:N:O:R:ST:U:V")) != EOF) {
++		    "b:cf:g:G:i:jl:m:no:qr:s:t:vE:FI:J:KL:M:N:O:R:ST:U:Vx")) != EOF) {
+ 		switch (c) {
+ 		case 'b':
+ 			blocksize = strtol(optarg, &tmp, 0);
+@@ -1431,6 +1431,13 @@ profile_error:
+ 			/* Print version number and exit */
+ 			show_version_only++;
  			break;
++		case 'x':
++ 			blocksize = sys_page_size;
++ 			fs_param.s_log_block_size =
++ 				int_log2(blocksize >> EXT2_MIN_BLOCK_LOG_SIZE);
++			/* create exclude bitmap */
++			edit_feature("exclude_bitmap", &fs_param.s_feature_compat);
++			break;
  		default:
  			usage();
+ 		}

@@ -10,7 +10,7 @@ journal size by a factor of 24.
 Signed-off-by: Amir Goldstein <amir73il@users.sf.net>
 
 diff --git a/lib/ext2fs/ext2_fs.h b/lib/ext2fs/ext2_fs.h
-index d87ed10..9c09fc8 100644
+index f166f97..3ba1a31 100644
 --- a/lib/ext2fs/ext2_fs.h
 +++ b/lib/ext2fs/ext2_fs.h
 @@ -652,6 +652,19 @@ struct ext2_super_block {
@@ -34,10 +34,10 @@ index d87ed10..9c09fc8 100644
   */
  
 diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-index d3eb31d..6b82005 100644
+index f5451ec..04b572e 100644
 --- a/lib/ext2fs/ext2fs.h
 +++ b/lib/ext2fs/ext2fs.h
-@@ -1253,6 +1253,8 @@ extern errcode_t ext2fs_add_journal_device(ext2_filsys fs,
+@@ -1263,6 +1263,8 @@ extern errcode_t ext2fs_add_journal_device(ext2_filsys fs,
  extern errcode_t ext2fs_add_journal_inode(ext2_filsys fs, blk_t size,
  					  int flags);
  extern int ext2fs_default_journal_size(__u64 blocks);
@@ -47,14 +47,13 @@ index d3eb31d..6b82005 100644
  /* openfs.c */
  extern errcode_t ext2fs_open(const char *name, int flags, int superblock,
 diff --git a/lib/ext2fs/mkjournal.c b/lib/ext2fs/mkjournal.c
-index 242c537..ff76019 100644
+index 242c537..9944cfe 100644
 --- a/lib/ext2fs/mkjournal.c
 +++ b/lib/ext2fs/mkjournal.c
-@@ -401,6 +401,47 @@ int ext2fs_default_journal_size(__u64 blocks)
- 	return 32768;
+@@ -402,6 +402,47 @@ int ext2fs_default_journal_size(__u64 blocks)
  }
  
-+/* 
+ /*
 + * Big journal is up to X times bigger than the default journal
 + * to accomodate snapshot COW credits in transactions.
 + * journal size is restricted to 1/32 of the filesystem size
@@ -68,7 +67,7 @@ index 242c537..ff76019 100644
 +	if (mega_blocks < factor)
 +		/* 32K/1M = 1/32 of filesystem size */
 +		return EXT4_DEF_JOURNAL_BLOCKS*mega_blocks;
-+	
++
 +	/* X times bigger than the default journal */
 +	return EXT4_DEF_JOURNAL_BLOCKS*factor;
 +}
@@ -91,31 +90,26 @@ index 242c537..ff76019 100644
 +
 +	/* read journal inode size */
 +	j_blocks = j_inode.i_size >> EXT2_BLOCK_SIZE_BITS(fs->super);
-+	
++
 +	return j_blocks;
 +}
 +
- /*
++/*
   * This function adds a journal device to a filesystem
   */
+ errcode_t ext2fs_add_journal_device(ext2_filsys fs, ext2_filsys journal_dev)
 diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-index 9798b88..046175b 100644
+index ff38a17..3a4a2a0 100644
 --- a/misc/mke2fs.c
 +++ b/misc/mke2fs.c
-@@ -1252,7 +1252,7 @@ profile_error:
- 	}
- 
- 	while ((c = getopt (argc, argv,
--		    "b:cf:g:G:i:jl:m:no:qr:s:t:vE:FI:J:KL:M:N:O:R:ST:U:V")) != EOF) {
-+		    "b:cf:g:G:i:jl:m:no:qr:s:t:vE:FI:J:KL:M:N:O:R:ST:U:Vx")) != EOF) {
- 		switch (c) {
- 		case 'b':
- 			blocksize = strtol(optarg, &tmp, 0);
-@@ -1431,6 +1431,15 @@ profile_error:
- 			/* Print version number and exit */
+@@ -1433,10 +1433,14 @@ profile_error:
  			show_version_only++;
  			break;
-+		case 'x':
+ 		case 'x':
+- 			blocksize = sys_page_size;
+- 			fs_param.s_log_block_size =
+- 				int_log2(blocksize >> EXT2_MIN_BLOCK_LOG_SIZE);
+-			/* create exclude bitmap */
 +			/* Prepare for snapshots: */
 +			/* 1. create a big journal */
 +			journal_size = -EXT4_MAX_COW_CREDITS;
@@ -123,10 +117,10 @@ index 9798b88..046175b 100644
 +			blocksize = sys_page_size;
 +			fs_param.s_log_block_size =
 +				int_log2(blocksize >> EXT2_MIN_BLOCK_LOG_SIZE);
-+			break;
++			/* 3. create exclude bitmap */
+ 			edit_feature("exclude_bitmap", &fs_param.s_feature_compat);
+ 			break;
  		default:
- 			usage();
- 		}
 diff --git a/misc/util.c b/misc/util.c
 index 51bdb60..c1472e7 100644
 --- a/misc/util.c

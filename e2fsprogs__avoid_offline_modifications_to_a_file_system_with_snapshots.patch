@@ -13,10 +13,10 @@ in interactive mode and avoids freeing blocks in preen mode.
 Signed-off-by: Amir Goldstein <amir73il@users.sf.net>
 
 diff --git a/e2fsck/e2fsck.h b/e2fsck/e2fsck.h
-index 84b8fe3..02d6cd2 100644
+index ea38419..b591bef 100644
 --- a/e2fsck/e2fsck.h
 +++ b/e2fsck/e2fsck.h
-@@ -478,6 +478,7 @@ void e2fsck_rehash_directories(e2fsck_t ctx);
+@@ -479,6 +479,7 @@ void e2fsck_rehash_directories(e2fsck_t ctx);
  void check_super_block(e2fsck_t ctx);
  int check_backup_super_block(e2fsck_t ctx);
  void check_resize_inode(e2fsck_t ctx);
@@ -25,7 +25,7 @@ index 84b8fe3..02d6cd2 100644
  /* util.c */
  extern void *e2fsck_allocate_memory(e2fsck_t ctx, unsigned int size,
 diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-index a86dbd5..cd3de39 100644
+index 046dbff..88ce935 100644
 --- a/e2fsck/pass1.c
 +++ b/e2fsck/pass1.c
 @@ -1659,6 +1659,17 @@ void e2fsck_clear_inode(e2fsck_t ctx, ext2_ino_t ino,
@@ -47,10 +47,10 @@ index a86dbd5..cd3de39 100644
  	inode->i_links_count = 0;
  	ext2fs_icount_store(ctx->inode_link_info, ino, 0);
 diff --git a/e2fsck/pass5.c b/e2fsck/pass5.c
-index 5ffb236..53c065f 100644
+index 80ff4a4..9c5e880 100644
 --- a/e2fsck/pass5.c
 +++ b/e2fsck/pass5.c
-@@ -400,6 +400,9 @@ redo_counts:
+@@ -403,6 +403,9 @@ redo_counts:
  		ext2fs_unmark_valid(fs);
  
  	for (i = 0; i < fs->group_desc_count; i++) {
@@ -79,7 +79,7 @@ index 5543134..30ef0cf 100644
  
  	if (!ctx->dirs_to_hash && !all_dirs)
 diff --git a/e2fsck/super.c b/e2fsck/super.c
-index 1728906..79025e5 100644
+index 975715e..4283f2a 100644
 --- a/e2fsck/super.c
 +++ b/e2fsck/super.c
 @@ -231,6 +231,12 @@ static int release_orphan_inodes(e2fsck_t ctx)
@@ -165,10 +165,10 @@ index 0e83e05..516afe6 100644
  			"quota" },
  	{	E2P_FEATURE_RO_INCOMPAT, EXT4_FEATURE_RO_COMPAT_BIGALLOC,
 diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-index 817abca..ed557a2 100644
+index 04b572e..ea7ea59 100644
 --- a/lib/ext2fs/ext2fs.h
 +++ b/lib/ext2fs/ext2fs.h
-@@ -554,6 +554,7 @@ typedef struct ext2_icount *ext2_icount_t;
+@@ -556,6 +556,7 @@ typedef struct ext2_icount *ext2_icount_t;
  #define EXT2_LIB_FEATURE_RO_COMPAT_SUPP	(EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER|\
  					 EXT4_FEATURE_RO_COMPAT_HUGE_FILE|\
  					 EXT2_FEATURE_RO_COMPAT_LARGE_FILE|\
@@ -177,10 +177,10 @@ index 817abca..ed557a2 100644
  					 EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE|\
  					 EXT4_FEATURE_RO_COMPAT_GDT_CSUM)
 diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-index 1f324fa..a32361c 100644
+index 3a4a2a0..28da7f0 100644
 --- a/misc/mke2fs.c
 +++ b/misc/mke2fs.c
-@@ -811,6 +811,7 @@ static __u32 ok_features[3] = {
+@@ -812,6 +812,7 @@ static __u32 ok_features[3] = {
  		EXT4_FEATURE_INCOMPAT_64BIT,
  	/* R/O compat */
  	EXT2_FEATURE_RO_COMPAT_LARGE_FILE|
@@ -188,7 +188,7 @@ index 1f324fa..a32361c 100644
  		EXT4_FEATURE_RO_COMPAT_HUGE_FILE|
  		EXT4_FEATURE_RO_COMPAT_DIR_NLINK|
  		EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE|
-@@ -1441,6 +1442,8 @@ profile_error:
+@@ -1442,6 +1443,8 @@ profile_error:
  				int_log2(blocksize >> EXT2_MIN_BLOCK_LOG_SIZE);
  			/* 3. create exclude bitmap */
  			edit_feature("exclude_bitmap", &fs_param.s_feature_compat);
@@ -198,10 +198,10 @@ index 1f324fa..a32361c 100644
  		default:
  			usage();
 diff --git a/misc/tune2fs.c b/misc/tune2fs.c
-index bcada11..4232323 100644
+index f89c854..a168c4b 100644
 --- a/misc/tune2fs.c
 +++ b/misc/tune2fs.c
-@@ -126,6 +126,7 @@ static __u32 ok_features[3] = {
+@@ -128,6 +128,7 @@ static __u32 ok_features[3] = {
  		EXT4_FEATURE_INCOMPAT_FLEX_BG,
  	/* R/O compat */
  	EXT2_FEATURE_RO_COMPAT_LARGE_FILE |
@@ -209,7 +209,7 @@ index bcada11..4232323 100644
  		EXT4_FEATURE_RO_COMPAT_HUGE_FILE|
  		EXT4_FEATURE_RO_COMPAT_DIR_NLINK|
  		EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE|
-@@ -143,6 +144,7 @@ static __u32 clear_ok_features[3] = {
+@@ -146,6 +147,7 @@ static __u32 clear_ok_features[3] = {
  		EXT4_FEATURE_INCOMPAT_FLEX_BG,
  	/* R/O compat */
  	EXT2_FEATURE_RO_COMPAT_LARGE_FILE |
@@ -217,49 +217,7 @@ index bcada11..4232323 100644
  		EXT4_FEATURE_RO_COMPAT_HUGE_FILE|
  		EXT4_FEATURE_RO_COMPAT_DIR_NLINK|
  		EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE|
-@@ -341,6 +343,32 @@ static void request_fsck_afterwards(ext2_filsys fs)
- 		printf(_("(and reboot afterwards!)\n"));
- }
- 
-+static int verify_clean_fs(ext2_filsys fs, int compat, unsigned int mask,
-+		int on)
-+{
-+	struct ext2_super_block *sb= fs->super;
-+
-+	if ((mount_flags & EXT2_MF_MOUNTED) &&
-+		!(mount_flags & EXT2_MF_READONLY)) {
-+		fprintf(stderr, _("The '%s' feature may only be "
-+					"%s when the filesystem is\n"
-+					"unmounted or mounted read-only.\n"),
-+				e2p_feature2string(compat, mask),
-+				on ? "set" : "cleared");
-+		exit(1);
-+	}
-+	if (sb->s_feature_incompat &
-+		EXT3_FEATURE_INCOMPAT_RECOVER) {
-+		fprintf(stderr, _("The needs_recovery flag is set.  "
-+					"Please run e2fsck before %s\n"
-+					"the '%s' flag.\n"),
-+				on ? "setting" : "clearing",
-+				e2p_feature2string(compat, mask));
-+		exit(1);
-+	}
-+	return 1;
-+}
-+
- /*
-  * Update the feature set as provided by the user.
-  */
-@@ -359,11 +387,28 @@ static void update_feature_set(ext2_filsys fs, char *features)
- 				 !((&sb->s_feature_compat)[(type)] & (mask)))
- #define FEATURE_CHANGED(type, mask) ((mask) & \
- 		     (old_features[(type)] ^ (&sb->s_feature_compat)[(type)]))
-+#define FEATURE_ON_SAFE(compat, mask) \
-+	(FEATURE_ON(compat, mask) && verify_clean_fs(fs, compat, mask, 1))
-+#define FEATURE_OFF_SAFE(compat, mask) \
-+	(FEATURE_OFF(compat, mask) && verify_clean_fs(fs, compat, mask, 0))
- 
- 	old_features[E2P_FEATURE_COMPAT] = sb->s_feature_compat;
+@@ -470,6 +472,19 @@ static void update_feature_set(ext2_filsys fs, char *features)
  	old_features[E2P_FEATURE_INCOMPAT] = sb->s_feature_incompat;
  	old_features[E2P_FEATURE_RO_INCOMPAT] = sb->s_feature_ro_compat;
  
@@ -279,7 +237,7 @@ index bcada11..4232323 100644
  	if (e2p_edit_feature2(features, &sb->s_feature_compat,
  			      ok_features, clear_ok_features,
  			      &type_err, &mask_err)) {
-@@ -371,6 +416,12 @@ static void update_feature_set(ext2_filsys fs, char *features)
+@@ -477,6 +492,12 @@ static void update_feature_set(ext2_filsys fs, char *features)
  			fprintf(stderr,
  				_("Invalid filesystem option set: %s\n"),
  				features);
@@ -292,8 +250,8 @@ index bcada11..4232323 100644
  		else if (type_err & E2P_FEATURE_NEGATE_FLAG)
  			fprintf(stderr, _("Clearing filesystem feature '%s' "
  					  "not supported.\n"),
-@@ -419,6 +470,35 @@ static void update_feature_set(ext2_filsys fs, char *features)
- 		sb->s_feature_compat &= ~EXT3_FEATURE_COMPAT_HAS_JOURNAL;
+@@ -535,6 +556,35 @@ static void update_feature_set(ext2_filsys fs, char *features)
+ 		add_exclude_bitmaps(fs);
  	}
  
 +	if (FEATURE_ON_SAFE(E2P_FEATURE_RO_INCOMPAT,

@@ -7,7 +7,7 @@ adds exclude bitmap support in tune2fs.
 
 Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
 diff --git a/misc/tune2fs.c b/misc/tune2fs.c
-index 4f399d4..6edd0db 100644
+index bcada11..f89c854 100644
 --- a/misc/tune2fs.c
 +++ b/misc/tune2fs.c
 @@ -119,7 +119,9 @@ static void usage(void)
@@ -17,11 +17,11 @@ index 4f399d4..6edd0db 100644
 -		EXT2_FEATURE_COMPAT_DIR_INDEX,
 +		EXT2_FEATURE_COMPAT_DIR_INDEX |
 +		EXT2_FEATURE_COMPAT_EXCLUDE_BITMAP,
-+ 
++
  	/* Incompat */
  	EXT2_FEATURE_INCOMPAT_FILETYPE |
  		EXT3_FEATURE_INCOMPAT_EXTENTS |
-@@ -138,7 +140,8 @@ static __u32 clear_ok_features[3] = {
+@@ -137,7 +139,8 @@ static __u32 clear_ok_features[3] = {
  	/* Compat */
  	EXT3_FEATURE_COMPAT_HAS_JOURNAL |
  		EXT2_FEATURE_COMPAT_RESIZE_INODE |
@@ -31,33 +31,7 @@ index 4f399d4..6edd0db 100644
  	/* Incompat */
  	EXT2_FEATURE_INCOMPAT_FILETYPE |
  		EXT4_FEATURE_INCOMPAT_FLEX_BG,
-@@ -368,20 +371,19 @@ static void discard_snapshot_list(ext2_filsys fs)
- static void reset_exclude_bitmap(ext2_filsys fs)
- {
- 	struct ext2_group_desc *gd;
--	int set_csum = 0, gd_dirty = 0;
-+	int csum = 0, gd_dirty = 0;
- 	dgrp_t i;
- 
--	if (fs->super->s_feature_ro_compat &
--			EXT4_FEATURE_RO_COMPAT_GDT_CSUM)
--		set_csum = 1;
-+	if (EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
-+					EXT4_FEATURE_RO_COMPAT_GDT_CSUM))
-+		csum = 1;
- 
- 	for (i = 0; i < fs->group_desc_count; i++) {
- 		gd = ext2fs_group_desc(fs, fs->group_desc, i);
- 		if (gd->bg_flags & EXT2_BG_EXCLUDE_UNINIT)
- 			continue;
- 		gd->bg_flags |= EXT2_BG_EXCLUDE_UNINIT;
--		if (set_csum)
--			ext2fs_group_desc_csum_set(fs, i);
-+		ext2fs_group_desc_csum_set(fs, i);
- 		gd_dirty = 1;
- 	}
- 	if (gd_dirty)
-@@ -389,6 +391,79 @@ static void reset_exclude_bitmap(ext2_filsys fs)
+@@ -270,6 +273,79 @@ static int release_blocks_proc(ext2_filsys fs, blk64_t *blocknr,
  }
  
  /*
@@ -137,18 +111,56 @@ index 4f399d4..6edd0db 100644
   * Remove the journal inode from the filesystem
   */
  static void remove_journal_inode(ext2_filsys fs)
-@@ -571,6 +646,22 @@ static void update_feature_set(ext2_filsys fs, char *features)
+@@ -341,6 +417,32 @@ static void request_fsck_afterwards(ext2_filsys fs)
+ 		printf(_("(and reboot afterwards!)\n"));
+ }
+ 
++static int verify_clean_fs(ext2_filsys fs, int compat, unsigned int mask,
++		int on)
++{
++	struct ext2_super_block *sb= fs->super;
++
++	if ((mount_flags & EXT2_MF_MOUNTED) &&
++		!(mount_flags & EXT2_MF_READONLY)) {
++		fprintf(stderr, _("The '%s' feature may only be "
++					"%s when the filesystem is\n"
++					"unmounted or mounted read-only.\n"),
++				e2p_feature2string(compat, mask),
++				on ? "set" : "cleared");
++		exit(1);
++	}
++	if (sb->s_feature_incompat &
++		EXT3_FEATURE_INCOMPAT_RECOVER) {
++		fprintf(stderr, _("The needs_recovery flag is set.  "
++					"Please run e2fsck before %s\n"
++					"the '%s' flag.\n"),
++				on ? "setting" : "clearing",
++				e2p_feature2string(compat, mask));
++		exit(1);
++	}
++	return 1;
++}
++
+ /*
+  * Update the feature set as provided by the user.
+  */
+@@ -359,6 +461,10 @@ static void update_feature_set(ext2_filsys fs, char *features)
+ 				 !((&sb->s_feature_compat)[(type)] & (mask)))
+ #define FEATURE_CHANGED(type, mask) ((mask) & \
+ 		     (old_features[(type)] ^ (&sb->s_feature_compat)[(type)]))
++#define FEATURE_ON_SAFE(compat, mask) \
++	(FEATURE_ON(compat, mask) && verify_clean_fs(fs, compat, mask, 1))
++#define FEATURE_OFF_SAFE(compat, mask) \
++	(FEATURE_OFF(compat, mask) && verify_clean_fs(fs, compat, mask, 0))
+ 
+ 	old_features[E2P_FEATURE_COMPAT] = sb->s_feature_compat;
+ 	old_features[E2P_FEATURE_INCOMPAT] = sb->s_feature_incompat;
+@@ -419,6 +525,16 @@ static void update_feature_set(ext2_filsys fs, char *features)
  		sb->s_feature_compat &= ~EXT3_FEATURE_COMPAT_HAS_JOURNAL;
  	}
  
 +	if (FEATURE_OFF_SAFE(E2P_FEATURE_COMPAT,
 +				EXT2_FEATURE_COMPAT_EXCLUDE_BITMAP)) {
-+		if (sb->s_feature_ro_compat &
-+				EXT4_FEATURE_RO_COMPAT_HAS_SNAPSHOT) {
-+			fputs(_("The snapshot feature is set, exclude_bitmap "
-+				"can not be turned off.\n"), stderr);
-+			exit(1);
-+		}
 +		remove_exclude_bitmaps(fs);
 +	}
 +
@@ -157,23 +169,10 @@ index 4f399d4..6edd0db 100644
 +		add_exclude_bitmaps(fs);
 +	}
 +
- 	if (FEATURE_OFF_SAFE(E2P_FEATURE_RO_INCOMPAT,
- 				EXT4_FEATURE_RO_COMPAT_HAS_SNAPSHOT)) {
- 		discard_snapshot_list(fs);
-@@ -603,9 +694,9 @@ static void update_feature_set(ext2_filsys fs, char *features)
- 
- 		if (!(sb->s_feature_compat &
- 				EXT2_FEATURE_COMPAT_EXCLUDE_BITMAP)) {
--			fputs(_("The exclude_bitmap feature is required for "
--				"setting the has_snapshot flag.\n"), stderr);
--			exit(1);
-+			sb->s_feature_compat |=
-+					EXT2_FEATURE_COMPAT_EXCLUDE_BITMAP;
-+			add_exclude_bitmaps(fs);
- 		}
- 	}
- 
-@@ -653,7 +744,7 @@ static void update_feature_set(ext2_filsys fs, char *features)
+ 	if (FEATURE_ON(E2P_FEATURE_COMPAT, EXT2_FEATURE_COMPAT_DIR_INDEX)) {
+ 		if (!sb->s_def_hash_version)
+ 			sb->s_def_hash_version = EXT2_HASH_HALF_MD4;
+@@ -463,7 +579,7 @@ static void update_feature_set(ext2_filsys fs, char *features)
  		for (i = 0; i < fs->group_desc_count; i++) {
  			gd = ext2fs_group_desc(fs, fs->group_desc, i);
  			if ((gd->bg_flags & EXT2_BG_INODE_ZEROED) == 0) {
@@ -182,7 +181,7 @@ index 4f399d4..6edd0db 100644
  				 * XXX what we really should do is zap
  				 * uninitialized inode tables instead.
  				 */
-@@ -1263,6 +1354,10 @@ static int ext2fs_is_meta_block(ext2_filsys fs, blk_t blk)
+@@ -1073,6 +1189,10 @@ static int ext2fs_is_meta_block(ext2_filsys fs, blk_t blk)
  	group = ext2fs_group_of_blk(fs, blk);
  	if (ext2fs_block_bitmap_loc(fs, group) == blk)
  		return 1;
@@ -193,7 +192,7 @@ index 4f399d4..6edd0db 100644
  	if (ext2fs_inode_bitmap_loc(fs, group) == blk)
  		return 1;
  	return 0;
-@@ -1481,6 +1576,17 @@ static int group_desc_scan_and_fix(ext2_filsys fs, ext2fs_block_bitmap bmap)
+@@ -1291,6 +1411,17 @@ static int group_desc_scan_and_fix(ext2_filsys fs, ext2fs_block_bitmap bmap)
  			ext2fs_block_bitmap_loc_set(fs, i, new_blk);
  		}
  

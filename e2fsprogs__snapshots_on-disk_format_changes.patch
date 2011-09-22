@@ -12,7 +12,7 @@ meaning that the file system may contain snapshots.
 Signed-off-by: Amir Goldstein <amir73il@users.sf.net>
 
 diff --git a/lib/e2p/ls.c b/lib/e2p/ls.c
-index 0f36f40..ee4a972 100644
+index 5e560ed..8491244 100644
 --- a/lib/e2p/ls.c
 +++ b/lib/e2p/ls.c
 @@ -160,6 +160,18 @@ static void print_super_flags(struct ext2_super_block * s, FILE *f)
@@ -35,10 +35,10 @@ index 0f36f40..ee4a972 100644
  		fputs("\n", f);
  	else
 diff --git a/lib/ext2fs/ext2_fs.h b/lib/ext2fs/ext2_fs.h
-index f1f0e19..3b66404 100644
+index edee187..f166f97 100644
 --- a/lib/ext2fs/ext2_fs.h
 +++ b/lib/ext2fs/ext2_fs.h
-@@ -437,7 +437,7 @@ struct ext2_inode_large {
+@@ -432,7 +432,7 @@ struct ext2_inode_large {
  #define i_dir_acl	i_size_high
  
  #if defined(__KERNEL__) || defined(__linux__)
@@ -47,16 +47,7 @@ index f1f0e19..3b66404 100644
  #define i_frag		osd2.linux2.l_i_frag
  #define i_fsize		osd2.linux2.l_i_fsize
  #define i_uid_low	i_uid
-@@ -674,7 +674,7 @@ struct ext2_super_block {
- #define EXT2_FEATURE_COMPAT_RESIZE_INODE	0x0010
- #define EXT2_FEATURE_COMPAT_DIR_INDEX		0x0020
- #define EXT2_FEATURE_COMPAT_LAZY_BG		0x0040
--/* #define EXT2_FEATURE_COMPAT_EXCLUDE_INODE	0x0080 not used */
-+#define EXT2_FEATURE_COMPAT_EXCLUDE_INODE	0x0080
- #define EXT2_FEATURE_COMPAT_EXCLUDE_BITMAP	0x0100
- 
- #define EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER	0x0001
-@@ -704,6 +704,7 @@ struct ext2_super_block {
+@@ -698,6 +698,7 @@ struct ext2_super_block {
  #define EXT2_FEATURE_INCOMPAT_SUPP	(EXT2_FEATURE_INCOMPAT_FILETYPE)
  #define EXT2_FEATURE_RO_COMPAT_SUPP	(EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER| \
  					 EXT2_FEATURE_RO_COMPAT_LARGE_FILE| \
