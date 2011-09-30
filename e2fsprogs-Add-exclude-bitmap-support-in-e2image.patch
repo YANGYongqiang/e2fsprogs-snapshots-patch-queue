@@ -7,10 +7,10 @@ Adds exclude bitmap support in e2image.
 
 Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
 diff --git a/lib/ext2fs/e2image.h b/lib/ext2fs/e2image.h
-index 4de2c8d..dfff0a3 100644
+index c918529..61d7ff9 100644
 --- a/lib/ext2fs/e2image.h
 +++ b/lib/ext2fs/e2image.h
-@@ -33,6 +33,7 @@ struct ext2_image_hdr {
+@@ -41,6 +41,7 @@ struct ext2_image_hdr {
  	__u32	offset_super;	/* Byte offset of the sb and descriptors */
  	__u32	offset_inode;	/* Byte offset of the inode table  */
  	__u32	offset_inodemap; /* Byte offset of the inode bitmaps */
@@ -19,10 +19,10 @@ index 4de2c8d..dfff0a3 100644
  	__u32	offset_reserved[8];
  };
 diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-index eedfcb5..6bffd91 100644
+index 872deda..45dd811 100644
 --- a/lib/ext2fs/ext2fs.h
 +++ b/lib/ext2fs/ext2fs.h
-@@ -507,6 +507,7 @@ typedef struct ext2_icount *ext2_icount_t;
+@@ -512,6 +512,7 @@ typedef struct ext2_icount *ext2_icount_t;
   */
  #define IMAGER_FLAG_INODEMAP	1
  #define IMAGER_FLAG_SPARSEWRITE	2
@@ -31,10 +31,10 @@ index eedfcb5..6bffd91 100644
  /*
   * For checking structure magic numbers...
 diff --git a/lib/ext2fs/imager.c b/lib/ext2fs/imager.c
-index 5a6d0b9..ffa78f2 100644
+index a0fb81e..c6b5af2 100644
 --- a/lib/ext2fs/imager.c
 +++ b/lib/ext2fs/imager.c
-@@ -295,6 +295,17 @@ errcode_t ext2fs_image_bitmap_write(ext2_filsys fs, int fd, int flags)
+@@ -296,6 +296,17 @@ errcode_t ext2fs_image_bitmap_write(ext2_filsys fs, int fd, int flags)
  		itr = 1;
  		cnt = EXT2_INODES_PER_GROUP(fs->super) * fs->group_desc_count;
  		size = (EXT2_INODES_PER_GROUP(fs->super) / 8);
@@ -52,7 +52,7 @@ index 5a6d0b9..ffa78f2 100644
  	} else {
  		if (!fs->block_map) {
  			retval = ext2fs_read_block_bitmap(fs);
-@@ -372,6 +383,17 @@ errcode_t ext2fs_image_bitmap_read(ext2_filsys fs, int fd, int flags)
+@@ -373,6 +384,17 @@ errcode_t ext2fs_image_bitmap_read(ext2_filsys fs, int fd, int flags)
  		itr = 1;
  		cnt = EXT2_INODES_PER_GROUP(fs->super) * fs->group_desc_count;
  		size = (EXT2_INODES_PER_GROUP(fs->super) / 8);
@@ -71,10 +71,10 @@ index 5a6d0b9..ffa78f2 100644
  		if (!fs->block_map) {
  			retval = ext2fs_read_block_bitmap(fs);
 diff --git a/lib/ext2fs/rw_bitmaps.c b/lib/ext2fs/rw_bitmaps.c
-index 92f110e..e0b8faf 100644
+index 3126733..6c8179b 100644
 --- a/lib/ext2fs/rw_bitmaps.c
 +++ b/lib/ext2fs/rw_bitmaps.c
-@@ -263,6 +263,7 @@ static errcode_t read_bitmaps(ext2_filsys fs, int do_inode, int do_block,
+@@ -274,6 +274,7 @@ static errcode_t read_bitmaps(ext2_filsys fs, int do_inode, int do_block,
  	ext2fs_free_mem(&buf);
  
  	if (fs->flags & EXT2_FLAG_IMAGE_FILE) {
@@ -82,18 +82,16 @@ index 92f110e..e0b8faf 100644
  		blk = (fs->image_header->offset_inodemap / fs->blocksize);
  		ino_cnt = fs->super->s_inodes_count;
  		while (inode_nbytes > 0) {
-@@ -283,12 +284,24 @@ static errcode_t read_bitmaps(ext2_filsys fs, int do_inode, int do_block,
+@@ -294,10 +295,25 @@ static errcode_t read_bitmaps(ext2_filsys fs, int do_inode, int do_block,
  		}
  		blk = (fs->image_header->offset_blockmap /
  		       fs->blocksize);
 +		exclude_blk = (fs->image_header->offset_excludemap /
 +			       fs->blocksize);
- 		blk_cnt = (blk64_t)EXT2_BLOCKS_PER_GROUP(fs->super) *
+ 		blk_cnt = (blk64_t)EXT2_CLUSTERS_PER_GROUP(fs->super) *
  			fs->group_desc_count;
  		while (block_nbytes > 0) {
  			if (do_exclude) {
--				retval = EXT2_ET_EXCLUDE_BITMAP_READ;
--				goto cleanup;
 +				retval = io_channel_read_blk64(fs->image_io,
 +					    exclude_blk++, 1, exclude_bitmap);
 +				if (retval)
@@ -106,14 +104,15 @@ index 92f110e..e0b8faf 100644
 +					       blk_itr, cnt, exclude_bitmap);
 +				if (retval)
 +					goto cleanup;
++
+ 				retval = EXT2_ET_EXCLUDE_BITMAP_READ;
+ 				goto cleanup;
  			}
- 
- 			retval = io_channel_read_blk64(fs->image_io, blk++,
 diff --git a/misc/e2image.c b/misc/e2image.c
-index d9e0681..ffecde5 100644
+index 4cd834a..44a602c 100644
 --- a/misc/e2image.c
 +++ b/misc/e2image.c
-@@ -118,6 +118,18 @@ static void write_image_file(ext2_filsys fs, int fd)
+@@ -187,6 +187,18 @@ static void write_image_file(ext2_filsys fs, int fd)
  		exit(1);
  	}
  
@@ -129,10 +128,10 @@ index d9e0681..ffecde5 100644
 +		}
 +	}
 +
- 	hdr.offset_inodemap = lseek(fd, 0, SEEK_CUR);
+ 	hdr.offset_inodemap = ext2fs_llseek(fd, 0, SEEK_CUR);
  	retval = ext2fs_image_bitmap_write(fs, fd, IMAGER_FLAG_INODEMAP);
  	if (retval) {
-@@ -283,6 +295,16 @@ static void mark_table_blocks(ext2_filsys fs)
+@@ -359,6 +371,16 @@ static void mark_table_blocks(ext2_filsys fs)
  		}
  
  		/*

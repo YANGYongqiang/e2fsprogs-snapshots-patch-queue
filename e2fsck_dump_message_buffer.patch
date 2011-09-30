@@ -13,10 +13,10 @@ space for the message buffer after the 1K super block.
 Signed-off-by: Amir Goldstein <amir73il@users.sf.net>
 
 diff --git a/e2fsck/e2fsck.h b/e2fsck/e2fsck.h
-index fa08f80..1a55825 100644
+index cd114a1..b437fc1 100644
 --- a/e2fsck/e2fsck.h
 +++ b/e2fsck/e2fsck.h
-@@ -481,6 +481,7 @@ void check_super_block(e2fsck_t ctx);
+@@ -498,6 +498,7 @@ void check_super_block(e2fsck_t ctx);
  int check_backup_super_block(e2fsck_t ctx);
  void check_resize_inode(e2fsck_t ctx);
  void check_snapshots(e2fsck_t ctx);
@@ -25,10 +25,10 @@ index fa08f80..1a55825 100644
  /* util.c */
  extern void *e2fsck_allocate_memory(e2fsck_t ctx, unsigned int size,
 diff --git a/e2fsck/journal.c b/e2fsck/journal.c
-index 93f685c..00d4d8f 100644
+index 561ff34..10daff3 100644
 --- a/e2fsck/journal.c
 +++ b/e2fsck/journal.c
-@@ -837,6 +837,22 @@ static errcode_t recover_ext3_journal(e2fsck_t ctx)
+@@ -840,6 +840,22 @@ static errcode_t recover_ext3_journal(e2fsck_t ctx)
  
  
  	if (journal->j_superblock->s_errno) {
@@ -52,10 +52,10 @@ index 93f685c..00d4d8f 100644
  		ext2fs_mark_super_dirty(ctx->fs);
  		journal->j_superblock->s_errno = 0;
 diff --git a/e2fsck/super.c b/e2fsck/super.c
-index a1700a0..b5f0b4e 100644
+index fd49d11..b5524ef 100644
 --- a/e2fsck/super.c
 +++ b/e2fsck/super.c
-@@ -620,6 +620,70 @@ static void e2fsck_fix_dirhash_hint(e2fsck_t ctx)
+@@ -629,6 +629,70 @@ static void e2fsck_fix_dirhash_hint(e2fsck_t ctx)
  	}
  }
  
@@ -126,9 +126,9 @@ index a1700a0..b5f0b4e 100644
  
  void check_super_block(e2fsck_t ctx)
  {
-@@ -1035,6 +1099,11 @@ void check_super_block(e2fsck_t ctx)
+@@ -1055,6 +1119,11 @@ void check_super_block(e2fsck_t ctx)
  	 */
- 	e2fsck_fix_dirhash_hint(ctx);
+ 	e2fsck_hide_quota(ctx);
  
 +	/*
 +	 * Print message buffer if necessary
@@ -139,10 +139,10 @@ index a1700a0..b5f0b4e 100644
  }
  
 diff --git a/e2fsck/unix.c b/e2fsck/unix.c
-index 71fba66..f8afa3d 100644
+index d0fa224..31cfabe 100644
 --- a/e2fsck/unix.c
 +++ b/e2fsck/unix.c
-@@ -1485,6 +1485,7 @@ no_journal:
+@@ -1543,6 +1543,7 @@ no_journal:
  				sb->s_lastcheck = ctx->now;
  			memset(((char *) sb) + EXT4_S_ERR_START, 0,
  			       EXT4_S_ERR_LEN);
@@ -151,19 +151,20 @@ index 71fba66..f8afa3d 100644
  		}
  	}
 diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-index ed557a2..3d69c55 100644
+index d8d76b1..3d0d56e 100644
 --- a/lib/ext2fs/ext2fs.h
 +++ b/lib/ext2fs/ext2fs.h
-@@ -38,6 +38,12 @@ extern "C" {
-  */
- #define SUPERBLOCK_OFFSET	1024
- #define SUPERBLOCK_SIZE 	1024
-+/*
+@@ -44,6 +44,13 @@ extern "C" {
+ #define SUPERBLOCK_SIZE		1024
+ 
+ /*
 + * When blocksize > 2K, the space after the superblock is used as
 + * a buffer to record error messages (in 256 bytes records).
 + */
 +#define MSGBUF_OFFSET           (SUPERBLOCK_OFFSET+SUPERBLOCK_SIZE)
 +#define MSGBUF_RECLEN           256
- 
- /*
++
++/*
   * The last ext2fs revision level that this version of the library is
+  * able to support.
+  */

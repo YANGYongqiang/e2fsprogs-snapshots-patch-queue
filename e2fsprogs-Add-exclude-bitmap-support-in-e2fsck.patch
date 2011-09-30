@@ -7,10 +7,10 @@ patch add exclude bitmap support in e2fsck.
 
 Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
 diff --git a/e2fsck/e2fsck.h b/e2fsck/e2fsck.h
-index 1a55825..1679ebe 100644
+index ec19d18..d02e640 100644
 --- a/e2fsck/e2fsck.h
 +++ b/e2fsck/e2fsck.h
-@@ -256,6 +256,7 @@ struct e2fsck_struct {
+@@ -260,6 +260,7 @@ struct e2fsck_struct {
  	 */
  	int *invalid_inode_bitmap_flag;
  	int *invalid_block_bitmap_flag;
@@ -19,10 +19,10 @@ index 1a55825..1679ebe 100644
  	int invalid_bitmaps;	/* There are invalid bitmaps/itable */
  
 diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-index 8d84ca4..dc24d72 100644
+index 3aa218d..1df0a2b 100644
 --- a/e2fsck/pass1.c
 +++ b/e2fsck/pass1.c
-@@ -2415,6 +2415,15 @@ static int process_bad_block(ext2_filsys fs,
+@@ -2452,6 +2452,15 @@ static int process_bad_block(ext2_filsys fs,
  			}
  			return 0;
  		}
@@ -38,7 +38,7 @@ index 8d84ca4..dc24d72 100644
  		if (blk == ext2fs_inode_bitmap_loc(fs, i)) {
  			if (fix_problem(ctx, PR_1_IB_BAD_BLOCK, pctx)) {
  				ctx->invalid_inode_bitmap_flag[i]++;
-@@ -2566,6 +2575,13 @@ static void handle_fs_bad_blocks(e2fsck_t ctx)
+@@ -2603,6 +2612,13 @@ static void handle_fs_bad_blocks(e2fsck_t ctx)
  					1, &new_blk);
  			ext2fs_block_bitmap_loc_set(fs, i, new_blk);
  		}
@@ -52,7 +52,7 @@ index 8d84ca4..dc24d72 100644
  		if (ctx->invalid_inode_bitmap_flag[i]) {
  			new_blk = ext2fs_inode_bitmap_loc(fs, i);
  			new_table_block(ctx, first_block, i, _("inode bitmap"),
-@@ -2644,6 +2660,25 @@ static void mark_table_blocks(e2fsck_t ctx)
+@@ -2681,6 +2697,25 @@ static void mark_table_blocks(e2fsck_t ctx)
  
  		}
  		/*
@@ -79,10 +79,10 @@ index 8d84ca4..dc24d72 100644
  		 */
  		if (ext2fs_inode_bitmap_loc(fs, i)) {
 diff --git a/e2fsck/pass1b.c b/e2fsck/pass1b.c
-index 155fcba..f77a9db 100644
+index 4011dea..5fa8f00 100644
 --- a/e2fsck/pass1b.c
 +++ b/e2fsck/pass1b.c
-@@ -848,6 +848,11 @@ static int check_if_fs_block(e2fsck_t ctx, blk64_t test_block)
+@@ -906,6 +906,11 @@ static int check_if_fs_block(e2fsck_t ctx, blk64_t test_block)
  		    (test_block == ext2fs_inode_bitmap_loc(fs, i)))
  			return 1;
  
@@ -95,35 +95,35 @@ index 155fcba..f77a9db 100644
  	}
  	return 0;
 diff --git a/e2fsck/pass5.c b/e2fsck/pass5.c
-index e643091..9c5e880 100644
+index 0dda1b3..416e325 100644
 --- a/e2fsck/pass5.c
 +++ b/e2fsck/pass5.c
-@@ -251,6 +251,9 @@ redo_counts:
- 			     (i < old_desc_blk + old_desc_blocks)) ||
- 			    (new_desc_blk && (i == new_desc_blk)) ||
- 			    (i == ext2fs_block_bitmap_loc(fs, group)) ||
+@@ -257,6 +257,9 @@ redo_counts:
+ 			     LE_CLSTR(i, old_desc_blk + old_desc_blocks-1)) ||
+ 			    (new_desc_blk && EQ_CLSTR(i, new_desc_blk)) ||
+ 			    EQ_CLSTR(i, ext2fs_block_bitmap_loc(fs, group)) ||
 +			    (EXT2_HAS_COMPAT_FEATURE(fs->super,
 +				EXT2_FEATURE_COMPAT_EXCLUDE_BITMAP) &&
-+			    (i == ext2fs_exclude_bitmap_loc(fs, group))) ||
- 			    (i == ext2fs_inode_bitmap_loc(fs, group)) ||
- 			    (i >= ext2fs_inode_table_loc(fs, group) &&
- 			     (i < ext2fs_inode_table_loc(fs, group) +
++			    (EQ_CLSTR(i, ext2fs_exclude_bitmap_loc(fs, group)))) ||
+ 			    EQ_CLSTR(i, ext2fs_inode_bitmap_loc(fs, group)) ||
+ 			    (GE_CLSTR(i, ext2fs_inode_table_loc(fs, group)) &&
+ 			     LE_CLSTR(i, (ext2fs_inode_table_loc(fs, group) +
 diff --git a/e2fsck/problem.h b/e2fsck/problem.h
-index ac058e3..f8e67b0 100644
+index c11a549..675fbfb 100644
 --- a/e2fsck/problem.h
 +++ b/e2fsck/problem.h
-@@ -234,6 +234,8 @@ struct problem_context {
- /* Corrupted snapshot */
- #define PR_0_FIX_SNAPSHOT			0x000103
+@@ -237,6 +237,8 @@ struct problem_context {
+ /* Make quota file hidden */
+ #define	PR_0_HIDE_QUOTA				0x000041
  
 +/* Exclude bitmap not in group */
 +#define PR_0_EB_NOT_GROUP			0x000104
  
  /*
   * Pass 1 errors
-@@ -527,6 +529,10 @@ struct problem_context {
- /* EOFBLOCKS flag set when not necessary */
- #define PR_1_EOFBLOCKS_FL_SET		0x010060
+@@ -542,6 +544,10 @@ struct problem_context {
+ /* Quota inode is user visible */
+ #define PR_1_QUOTA_INODE_NOT_HIDDEN	0x010064
  
 +/* Block bitmap conflicts with some other fs block */
 +#define PR_1_EB_CONFLICT		0x010101
@@ -133,10 +133,10 @@ index ac058e3..f8e67b0 100644
   * Pass 1b errors
   */
 diff --git a/e2fsck/super.c b/e2fsck/super.c
-index b5f0b4e..092b554 100644
+index 36e7309..63fd218 100644
 --- a/e2fsck/super.c
 +++ b/e2fsck/super.c
-@@ -831,6 +831,20 @@ void check_super_block(e2fsck_t ctx)
+@@ -604,6 +604,20 @@ void check_super_block(e2fsck_t ctx)
  			ctx->invalid_block_bitmap_flag[i]++;
  			ctx->invalid_bitmaps++;
  		}
@@ -157,7 +157,7 @@ index b5f0b4e..092b554 100644
  		if ((ext2fs_inode_bitmap_loc(fs, i) < first_block) ||
  		    (ext2fs_inode_bitmap_loc(fs, i) > last_block)) {
  			pctx.blk = ext2fs_inode_bitmap_loc(fs, i);
-@@ -864,6 +878,8 @@ void check_super_block(e2fsck_t ctx)
+@@ -637,6 +651,8 @@ void check_super_block(e2fsck_t ctx)
  		if (!ext2fs_group_desc_csum_verify(fs, i)) {
  			if (fix_problem(ctx, PR_0_GDT_CSUM, &pctx)) {
  				ext2fs_bg_flags_clear(fs, i, EXT2_BG_BLOCK_UNINIT);
@@ -166,7 +166,7 @@ index b5f0b4e..092b554 100644
  				ext2fs_bg_flags_clear(fs, i, EXT2_BG_INODE_UNINIT);
  				ext2fs_bg_itable_unused_set(fs, i, 0);
  				should_be = 1;
-@@ -873,10 +889,12 @@ void check_super_block(e2fsck_t ctx)
+@@ -646,10 +662,12 @@ void check_super_block(e2fsck_t ctx)
  
  		if (!csum_flag &&
  		    (ext2fs_bg_flags_test(fs, i, EXT2_BG_BLOCK_UNINIT) ||
@@ -180,10 +180,10 @@ index b5f0b4e..092b554 100644
  				ext2fs_bg_itable_unused_set(fs, i, 0);
  				should_be = 1;
 diff --git a/e2fsck/util.c b/e2fsck/util.c
-index fb9a87a..7801d0b 100644
+index a15986d..18e9171 100644
 --- a/e2fsck/util.c
 +++ b/e2fsck/util.c
-@@ -223,7 +223,8 @@ void e2fsck_read_bitmaps(e2fsck_t ctx)
+@@ -224,7 +224,8 @@ void e2fsck_read_bitmaps(e2fsck_t ctx)
  		fatal_error(ctx, 0);
  	}
  
@@ -193,7 +193,7 @@ index fb9a87a..7801d0b 100644
  	retval = ext2fs_read_bitmaps(fs);
  	ehandler_operation(old_op);
  	if (retval) {
-@@ -240,12 +241,14 @@ void e2fsck_write_bitmaps(e2fsck_t ctx)
+@@ -241,12 +242,14 @@ void e2fsck_write_bitmaps(e2fsck_t ctx)
  	errcode_t	retval;
  	const char	*old_op;
  
@@ -211,10 +211,10 @@ index fb9a87a..7801d0b 100644
  		fatal_error(ctx, 0);
  	}
 diff --git a/lib/ext2fs/check_desc.c b/lib/ext2fs/check_desc.c
-index 7929cd9..fa61c85 100644
+index a6fcc45..881959c 100644
 --- a/lib/ext2fs/check_desc.c
 +++ b/lib/ext2fs/check_desc.c
-@@ -69,6 +69,20 @@ errcode_t ext2fs_check_desc(ext2_filsys fs)
+@@ -68,6 +68,20 @@ errcode_t ext2fs_check_desc(ext2_filsys fs)
  		ext2fs_mark_block_bitmap2(bmap, blk);
  
  		/*
@@ -236,10 +236,10 @@ index 7929cd9..fa61c85 100644
  		 */
  		blk = ext2fs_inode_bitmap_loc(fs, i);
 diff --git a/lib/ext2fs/csum.c b/lib/ext2fs/csum.c
-index 58e2971..4072f2d 100644
+index 596923e..d6158e1 100644
 --- a/lib/ext2fs/csum.c
 +++ b/lib/ext2fs/csum.c
-@@ -228,8 +228,9 @@ int main(int argc, char **argv)
+@@ -229,8 +229,9 @@ int main(int argc, char **argv)
  
  	for (i=0; i < fs->group_desc_count; i++) {
  		ext2fs_block_bitmap_loc_set(fs, i, 124);

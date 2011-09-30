@@ -7,10 +7,10 @@ adds exclude bitmap support in debugfs.
 
 Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
 diff --git a/debugfs/debug_cmds.ct b/debugfs/debug_cmds.ct
-index 9b6c985..39743b8 100644
+index 4e9e831..aa65c23 100644
 --- a/debugfs/debug_cmds.ct
 +++ b/debugfs/debug_cmds.ct
-@@ -85,6 +85,15 @@ request do_setb, "Set a block's in-use flag",
+@@ -88,6 +88,15 @@ request do_setb, "Set a block's in-use flag",
  request do_testb, "Test a block's in-use flag",
  	testb;
  
@@ -27,10 +27,10 @@ index 9b6c985..39743b8 100644
  	modify_inode, mi;
  
 diff --git a/debugfs/debugfs.c b/debugfs/debugfs.c
-index e441bc5..90e8ba2 100644
+index cfaaed1..c555ed1 100644
 --- a/debugfs/debugfs.c
 +++ b/debugfs/debugfs.c
-@@ -95,6 +95,11 @@ static void open_filesystem(char *device, int open_flags, blk64_t superblock,
+@@ -96,6 +96,11 @@ static void open_filesystem(char *device, int open_flags, blk64_t superblock,
  			com_err(device, retval, "while reading inode bitmap");
  			goto errout;
  		}
@@ -42,22 +42,22 @@ index e441bc5..90e8ba2 100644
  		retval = ext2fs_read_block_bitmap(current_fs);
  		if (retval) {
  			com_err(device, retval, "while reading block bitmap");
-@@ -344,12 +349,14 @@ void do_show_super_stats(int argc, char *argv[])
+@@ -350,12 +355,14 @@ void do_show_super_stats(int argc, char *argv[])
  					      EXT4_FEATURE_RO_COMPAT_GDT_CSUM);
  	for (i = 0; i < current_fs->group_desc_count; i++) {
  		fprintf(out, " Group %2d: block bitmap at %llu, "
 +			"exlcude bitmap at %llu, "
  		        "inode bitmap at %llu, "
  		        "inode table at %llu\n"
- 		        "           %u free %s, "
+ 		        "           %u free %s%s, "
  		        "%u free %s, "
  		        "%u used %s%s",
  		        i, ext2fs_block_bitmap_loc(current_fs, i),
 +			ext2fs_exclude_bitmap_loc(current_fs, i),
  		        ext2fs_inode_bitmap_loc(current_fs, i),
  			ext2fs_inode_table_loc(current_fs, i),
- 		        ext2fs_bg_free_blocks_count(current_fs, i),
-@@ -367,10 +374,12 @@ void do_show_super_stats(int argc, char *argv[])
+ 		        ext2fs_bg_free_blocks_count(current_fs, i), units,
+@@ -373,10 +380,12 @@ void do_show_super_stats(int argc, char *argv[])
  				ext2fs_bg_itable_unused(current_fs, i) != 1 ?
  				"inodes" : "inode");
  		first = 1;
@@ -74,7 +74,7 @@ index e441bc5..90e8ba2 100644
  		if (gdt_csum) {
  			fprintf(out, "%sChecksum 0x%04x",
  				first ? "           [":", ", ext2fs_bg_checksum(current_fs, i));
-@@ -1044,6 +1053,70 @@ void do_testb(int argc, char *argv[])
+@@ -1072,6 +1081,70 @@ void do_testb(int argc, char *argv[])
  	}
  }
  
@@ -146,22 +146,22 @@ index e441bc5..90e8ba2 100644
  		      const char *format, __u8 *val)
  {
 diff --git a/debugfs/set_fields.c b/debugfs/set_fields.c
-index ac6bc25..1942447 100644
+index 1d5d630..eb0ea98 100644
 --- a/debugfs/set_fields.c
 +++ b/debugfs/set_fields.c
-@@ -186,6 +186,7 @@ static struct field_set_info inode_fields[] = {
+@@ -205,6 +205,7 @@ static struct field_set_info inode_fields[] = {
  
  static struct field_set_info ext2_bg_fields[] = {
- 	{ "block_bitmap", &set_gd.bg_block_bitmap, 4, parse_uint },
-+	{ "exclude_bitmap", &set_gd.bg_exclude_bitmap, 4, parse_uint },
- 	{ "inode_bitmap", &set_gd.bg_inode_bitmap, 4, parse_uint },
- 	{ "inode_table", &set_gd.bg_inode_table, 4, parse_uint },
- 	{ "free_blocks_count", &set_gd.bg_free_blocks_count, 2, parse_uint },
+ 	{ "block_bitmap", &set_gd.bg_block_bitmap, NULL, 4, parse_uint },
++	{ "exclude_bitmap", &set_gd.bg_exclude_bitmap_lo, NULL, 4, parse_uint },
+ 	{ "inode_bitmap", &set_gd.bg_inode_bitmap, NULL, 4, parse_uint },
+ 	{ "inode_table", &set_gd.bg_inode_table, NULL, 4, parse_uint },
+ 	{ "free_blocks_count", &set_gd.bg_free_blocks_count, NULL, 2, parse_uint },
 diff --git a/lib/ext2fs/bitops.h b/lib/ext2fs/bitops.h
-index 3ded002..1ab37af 100644
+index 83a01e4..64d14f9 100644
 --- a/lib/ext2fs/bitops.h
 +++ b/lib/ext2fs/bitops.h
-@@ -68,6 +68,13 @@ extern int ext2fs_unmark_block_bitmap(ext2fs_block_bitmap bitmap,
+@@ -72,6 +72,13 @@ extern int ext2fs_unmark_block_bitmap(ext2fs_block_bitmap bitmap,
  				       blk_t block);
  extern int ext2fs_test_block_bitmap(ext2fs_block_bitmap bitmap, blk_t block);
  
@@ -175,7 +175,7 @@ index 3ded002..1ab37af 100644
  extern int ext2fs_mark_inode_bitmap(ext2fs_inode_bitmap bitmap, ext2_ino_t inode);
  extern int ext2fs_unmark_inode_bitmap(ext2fs_inode_bitmap bitmap,
  				       ext2_ino_t inode);
-@@ -411,6 +418,27 @@ _INLINE_ int ext2fs_test_block_bitmap(ext2fs_block_bitmap bitmap,
+@@ -415,6 +422,27 @@ _INLINE_ int ext2fs_test_block_bitmap(ext2fs_block_bitmap bitmap,
  					  block);
  }
  
@@ -203,7 +203,7 @@ index 3ded002..1ab37af 100644
  _INLINE_ int ext2fs_mark_inode_bitmap(ext2fs_inode_bitmap bitmap,
  				       ext2_ino_t inode)
  {
-@@ -530,6 +558,27 @@ _INLINE_ int ext2fs_test_block_bitmap2(ext2fs_block_bitmap bitmap,
+@@ -534,6 +562,27 @@ _INLINE_ int ext2fs_test_block_bitmap2(ext2fs_block_bitmap bitmap,
  					block);
  }
  
