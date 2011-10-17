@@ -164,7 +164,7 @@ index f03193c..5bfba3b 100644
  			if (long_opt) {
  				if (first)
 diff --git a/lib/ext2fs/ext2_fs.h b/lib/ext2fs/ext2_fs.h
-index dca2fc3..55d7d8c 100644
+index 4c57460..a19d2d6 100644
 --- a/lib/ext2fs/ext2_fs.h
 +++ b/lib/ext2fs/ext2_fs.h
 @@ -348,6 +348,24 @@ struct ext4_new_group_input {
@@ -273,3 +273,58 @@ index 1f55db3..f8f370e 100644
  				break;
  			case 'v':
  				generation_opt = 1;
+diff --git a/misc/lssnap.1.in b/misc/lssnap.1.in
+new file mode 100644
+index 0000000..73fcb65
+--- /dev/null
++++ b/misc/lssnap.1.in
+@@ -0,0 +1,49 @@
++.\" -*- nroff -*-
++.TH LSSNAP 1 "@E2FSPROGS_MONTH@ @E2FSPROGS_YEAR@" "E2fsprogs version @E2FSPROGS_VERSION@"
++.SH NAME
++lssnap \- list snapshot file attributes on a Linux fourth extended file system
++.SH SYNOPSIS
++.B lssnap
++[
++.B \-RVadv
++]
++[
++.I files...
++]
++.SH DESCRIPTION
++.B lssnap
++lists the snapshot file attributes on a fourth extended file system.  See
++.BR chsnap (1)
++for a description of the snapshot file attributes and what they mean.
++.SH OPTIONS
++.TP
++.B \-R
++Recursively list attributes of snapshot directories and their contents.
++.TP
++.B \-V
++Display the program version.
++.TP
++.B \-a
++List all snapshot files in directories, including files that start with `.'.
++.TP
++.B \-d
++List directories like other files, rather than listing their contents.
++.TP
++.B \-v
++List the snapshot file's version/generation number.
++.SH AUTHOR
++.B lssnap
++was copied from
++.B lsattr
++by Amir Goldstein <amir73il@users.sf.net>.
++.B lsattr
++was written by Remy Card <Remy.Card@linux.org>.  It is currently being
++maintained by Theodore Ts'o <tytso@alum.mit.edu>.
++.SH BUGS
++There are none :-).
++.SH AVAILABILITY
++.B lssnap
++is part of the e2fsprogs package and is available from
++http://e2fsprogs.sourceforge.net.
++.SH SEE ALSO
++.BR chsnap (1)
