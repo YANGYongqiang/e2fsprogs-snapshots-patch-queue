@@ -10,7 +10,7 @@ journal size by a factor of 24.
 Signed-off-by: Amir Goldstein <amir73il@users.sf.net>
 
 diff --git a/lib/ext2fs/ext2_fs.h b/lib/ext2fs/ext2_fs.h
-index d360915..dca2fc3 100644
+index 3e21a6c..4c57460 100644
 --- a/lib/ext2fs/ext2_fs.h
 +++ b/lib/ext2fs/ext2_fs.h
 @@ -676,6 +676,19 @@ struct ext2_super_block {
@@ -34,10 +34,10 @@ index d360915..dca2fc3 100644
   */
  
 diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-index 45dd811..cbb7b9c 100644
+index dab5ad7..80b2604 100644
 --- a/lib/ext2fs/ext2fs.h
 +++ b/lib/ext2fs/ext2fs.h
-@@ -1304,6 +1304,8 @@ extern errcode_t ext2fs_add_journal_device(ext2_filsys fs,
+@@ -1328,6 +1328,8 @@ extern errcode_t ext2fs_add_journal_device(ext2_filsys fs,
  extern errcode_t ext2fs_add_journal_inode(ext2_filsys fs, blk_t num_blocks,
  					  int flags);
  extern int ext2fs_default_journal_size(__u64 num_blocks);
@@ -98,31 +98,11 @@ index 838d751..63b7d4c 100644
   * This function adds a journal device to a filesystem
   */
  errcode_t ext2fs_add_journal_device(ext2_filsys fs, ext2_filsys journal_dev)
-diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-index 7d371bb..ee4647b 100644
---- a/misc/mke2fs.c
-+++ b/misc/mke2fs.c
-@@ -1470,10 +1470,14 @@ profile_error:
- 			show_version_only++;
- 			break;
- 		case 'x':
-+			/* Prepare for snapshots: */
-+			/* 1. create a big journal */
-+			journal_size = -EXT4_MAX_COW_CREDITS;
-+			/* 2. use system page size as block size */
- 			blocksize = sys_page_size;
- 			fs_param.s_log_block_size =
- 				int_log2(blocksize >> EXT2_MIN_BLOCK_LOG_SIZE);
--			/* create exclude bitmap */
-+			/* 3. create exclude bitmap */
- 			edit_feature("exclude_bitmap", &fs_param.s_feature_compat);
- 			break;
- 		default:
 diff --git a/misc/util.c b/misc/util.c
-index 4564b4e..6364e77 100644
+index 05334a6..2e1476b 100644
 --- a/misc/util.c
 +++ b/misc/util.c
-@@ -217,6 +217,20 @@ void parse_journal_opts(const char *opts)
+@@ -218,6 +218,20 @@ void parse_journal_opts(const char *opts)
  			journal_size = strtoul(arg, &p, 0);
  			if (*p)
  				journal_usage++;
@@ -143,7 +123,7 @@ index 4564b4e..6364e77 100644
  		} else if (strcmp(token, "v1_superblock") == 0) {
  			journal_flags |= EXT2_MKJOURNAL_V1_SUPER;
  			continue;
-@@ -230,6 +244,8 @@ void parse_journal_opts(const char *opts)
+@@ -231,6 +245,8 @@ void parse_journal_opts(const char *opts)
  			"\tis set off by an equals ('=') sign.\n\n"
  			"Valid journal options are:\n"
  			"\tsize=<journal size in megabytes>\n"
@@ -152,7 +132,7 @@ index 4564b4e..6364e77 100644
  			"\tdevice=<journal device>\n\n"
  			"The journal size must be between "
  			"1024 and 10240000 filesystem blocks.\n\n"), stderr);
-@@ -258,6 +274,20 @@ unsigned int figure_journal_size(int size, ext2_filsys fs)
+@@ -259,6 +275,20 @@ unsigned int figure_journal_size(int size, ext2_filsys fs)
  		return 0;
  	}
  

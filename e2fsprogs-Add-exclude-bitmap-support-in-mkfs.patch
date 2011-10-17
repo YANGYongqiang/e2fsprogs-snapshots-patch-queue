@@ -110,10 +110,10 @@ index 9f3d4e0..b5e2f0c 100644
  					  rem_grps, 1);
  		last_blk = ext2fs_group_last_block2(fs, last_grp);
 diff --git a/lib/ext2fs/bitmaps.c b/lib/ext2fs/bitmaps.c
-index e518295..3589a7f 100644
+index 148d310..63480a3 100644
 --- a/lib/ext2fs/bitmaps.c
 +++ b/lib/ext2fs/bitmaps.c
-@@ -35,6 +35,11 @@ void ext2fs_free_inode_bitmap(ext2fs_inode_bitmap bitmap)
+@@ -40,6 +40,11 @@ void ext2fs_free_exclude_bitmap(ext2fs_exclude_bitmap bitmap)
  	ext2fs_free_generic_bmap(bitmap);
  }
  
@@ -125,7 +125,7 @@ index e518295..3589a7f 100644
  void ext2fs_free_block_bitmap(ext2fs_block_bitmap bitmap)
  {
  	ext2fs_free_generic_bmap(bitmap);
-@@ -82,6 +87,39 @@ errcode_t ext2fs_allocate_inode_bitmap(ext2_filsys fs,
+@@ -87,6 +92,39 @@ errcode_t ext2fs_allocate_inode_bitmap(ext2_filsys fs,
  					 (ext2fs_generic_bitmap *) ret));
  }
  
@@ -165,7 +165,7 @@ index e518295..3589a7f 100644
  errcode_t ext2fs_allocate_block_bitmap(ext2_filsys fs,
  				       const char *descr,
  				       ext2fs_block_bitmap *ret)
-@@ -268,6 +306,38 @@ errcode_t ext2fs_get_inode_bitmap_range(ext2fs_inode_bitmap bmap,
+@@ -273,6 +311,38 @@ errcode_t ext2fs_get_inode_bitmap_range(ext2fs_inode_bitmap bmap,
  						start, num, out));
  }
  
@@ -261,18 +261,18 @@ index ac80fc5..c49f0d0 100644
 +
  	end
 diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-index c8703b3..cae03ec 100644
+index dd28c64..d1f0d98 100644
 --- a/lib/ext2fs/ext2fs.h
 +++ b/lib/ext2fs/ext2fs.h
-@@ -114,6 +114,7 @@ typedef struct struct_ext2_filsys *ext2_filsys;
- typedef struct ext2fs_struct_generic_bitmap *ext2fs_generic_bitmap;
+@@ -115,6 +115,7 @@ typedef struct ext2fs_struct_generic_bitmap *ext2fs_generic_bitmap;
  typedef struct ext2fs_struct_generic_bitmap *ext2fs_inode_bitmap;
+ typedef struct ext2fs_struct_generic_bitmap *ext2fs_exclude_bitmap;
  typedef struct ext2fs_struct_generic_bitmap *ext2fs_block_bitmap;
 +typedef struct ext2fs_struct_generic_bitmap *ext2fs_exclude_bitmap;
  
  #define EXT2_FIRST_INODE(s)	EXT2_FIRST_INO(s)
  
-@@ -196,7 +197,7 @@ typedef struct ext2_file *ext2_file_t;
+@@ -197,7 +198,7 @@ typedef struct ext2_file *ext2_file_t;
  #define EXT2_FLAG_PRINT_PROGRESS	0x40000
  #define EXT2_FLAG_DIRECT_IO		0x80000
  #define EXT2_FLAG_SKIP_MMP		0x100000
@@ -281,16 +281,7 @@ index c8703b3..cae03ec 100644
  
  /*
   * Special flag in the ext2 inode i_flag field that means that this is
-@@ -226,7 +227,7 @@ struct struct_ext2_filsys {
- 	unsigned int			inode_blocks_per_group;
- 	ext2fs_inode_bitmap		inode_map;
- 	ext2fs_block_bitmap		block_map;
--	ext2fs_block_bitmap		exclude_map;
-+	ext2fs_exclude_bitmap		exclude_map;
- 	/* XXX FIXME-64: not 64-bit safe, but not used? */
- 	errcode_t (*get_blocks)(ext2_filsys fs, ext2_ino_t ino, blk_t *blocks);
- 	errcode_t (*check_directory)(ext2_filsys fs, ext2_ino_t ino);
-@@ -818,6 +819,9 @@ extern struct ext2_group_desc *ext2fs_group_desc(ext2_filsys fs,
+@@ -819,6 +820,9 @@ extern struct ext2_group_desc *ext2fs_group_desc(ext2_filsys fs,
  extern blk64_t ext2fs_block_bitmap_loc(ext2_filsys fs, dgrp_t group);
  extern void ext2fs_block_bitmap_loc_set(ext2_filsys fs, dgrp_t group,
  					blk64_t blk);
@@ -300,7 +291,7 @@ index c8703b3..cae03ec 100644
  extern blk64_t ext2fs_inode_bitmap_loc(ext2_filsys fs, dgrp_t group);
  extern void ext2fs_inode_bitmap_loc_set(ext2_filsys fs, dgrp_t group,
  					blk64_t blk);
-@@ -1626,9 +1630,11 @@ _INLINE_ void ext2fs_mark_bb_dirty(ext2_filsys fs)
+@@ -1627,9 +1631,11 @@ _INLINE_ void ext2fs_mark_bb_dirty(ext2_filsys fs)
  /*
   * Mark the exclude bitmap as dirty
   */
@@ -314,7 +305,7 @@ index c8703b3..cae03ec 100644
  }
  
  /*
-@@ -1650,9 +1656,9 @@ _INLINE_ int ext2fs_test_bb_dirty(ext2_filsys fs)
+@@ -1651,9 +1657,9 @@ _INLINE_ int ext2fs_test_bb_dirty(ext2_filsys fs)
  /*
   * Check to see if a filesystem's exclude bitmap is dirty
   */
@@ -571,7 +562,7 @@ index 7962472..07ba1cd 100644
  	gdp4->bg_inode_table_hi = ext2fs_swab32(gdp4->bg_inode_table_hi);
  	gdp4->bg_free_blocks_count_hi =
 diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-index ff57a82..d1b1f00 100644
+index 3dcb3b7..2dc28e7 100644
 --- a/misc/mke2fs.c
 +++ b/misc/mke2fs.c
 @@ -828,6 +828,7 @@ static void parse_extended_opts(struct ext2_super_block *param,

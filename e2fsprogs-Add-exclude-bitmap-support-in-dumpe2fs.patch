@@ -7,7 +7,7 @@ exclude bitmap support in dumpe2fs.
 
 Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
 diff --git a/misc/dumpe2fs.c b/misc/dumpe2fs.c
-index d12d4aa..903ff1e 100644
+index df241c2..6b39575 100644
 --- a/misc/dumpe2fs.c
 +++ b/misc/dumpe2fs.c
 @@ -119,6 +119,8 @@ static void print_bg_opts(ext2_filsys fs, dgrp_t i)
@@ -43,12 +43,27 @@ index d12d4aa..903ff1e 100644
  	if (fs->inode_map)
  		inode_bitmap = malloc(inode_nbytes);
  
-@@ -260,6 +265,17 @@ static void list_desc (ext2_filsys fs)
+@@ -222,6 +227,14 @@ static void list_desc (ext2_filsys fs)
+ 		print_number(ext2fs_block_bitmap_loc(fs, i));
+ 		print_bg_rel_offset(fs, ext2fs_block_bitmap_loc(fs, i), 0,
+ 				    first_block, last_block);
++		if (fs->super->s_feature_compat &
++				EXT2_FEATURE_COMPAT_EXCLUDE_BITMAP) {
++			fputs(_(", snapshot bitmap at "), stdout);
++			print_number(ext2fs_exclude_bitmap_loc(fs, i));
++			print_bg_rel_offset(fs,
++					ext2fs_exclude_bitmap_loc(fs, i),
++					0, first_block, last_block);
++		}
+ 		fputs(_(", Inode bitmap at "), stdout);
+ 		print_number(ext2fs_inode_bitmap_loc(fs, i));
+ 		print_bg_rel_offset(fs, ext2fs_inode_bitmap_loc(fs, i), 0,
+@@ -252,6 +265,17 @@ static void list_desc (ext2_filsys fs)
  			fputc('\n', stdout);
  			blk_itr += fs->super->s_clusters_per_group;
  		}
 +		if (exclude_bitmap) {
-+			fputs(_("  Non-excluded blocks: "), stdout);
++			fputs(_("  Non-snapshot blocks: "), stdout);
 +			ext2fs_get_exclude_bitmap_range2(fs->exclude_map,
 +				exclude_itr, block_nbytes << 3, exclude_bitmap);
 +			print_free(i, block_bitmap,
@@ -61,7 +76,7 @@ index d12d4aa..903ff1e 100644
  		if (inode_bitmap) {
  			fputs(_("  Free inodes: "), stdout);
  			ext2fs_get_inode_bitmap_range2(fs->inode_map,
-@@ -272,6 +288,8 @@ static void list_desc (ext2_filsys fs)
+@@ -264,6 +288,8 @@ static void list_desc (ext2_filsys fs)
  	}
  	if (block_bitmap)
  		free(block_bitmap);

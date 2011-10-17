@@ -1,15 +1,13 @@
-e2fsprogs: Create/check the exclude bitmap
+e2fsprogs: check the exclude bitmap
 
 From: Amir Goldstein <amir73il@users.sf.net>
 
 Excluding snapshot blocks from COW is done by setting their bit in
 the exclude bitmap. There is one exclude bitmap block per block group.
-Mke2fs allocates the exclude bitmap and it cannot be removed.
 Fsck checks that all (and only) snapshot file blocks are excluded.
 
 Signed-off-by: Amir Goldstein <amir73il@users.sf.net>
 Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
-
 diff --git a/e2fsck/e2fsck.h b/e2fsck/e2fsck.h
 index d225d89..44909c3 100644
 --- a/e2fsck/e2fsck.h
@@ -347,6 +345,22 @@ index 17b0c10..3647f6e 100644
  /*
   * Post-Pass 5 errors
   */
+diff --git a/lib/ext2fs/bitmaps.c b/lib/ext2fs/bitmaps.c
+index e518295..148d310 100644
+--- a/lib/ext2fs/bitmaps.c
++++ b/lib/ext2fs/bitmaps.c
+@@ -35,6 +35,11 @@ void ext2fs_free_inode_bitmap(ext2fs_inode_bitmap bitmap)
+ 	ext2fs_free_generic_bmap(bitmap);
+ }
+ 
++void ext2fs_free_exclude_bitmap(ext2fs_exclude_bitmap bitmap)
++{
++	ext2fs_free_generic_bmap(bitmap);
++}
++
+ void ext2fs_free_block_bitmap(ext2fs_block_bitmap bitmap)
+ {
+ 	ext2fs_free_generic_bmap(bitmap);
 diff --git a/lib/ext2fs/blknum.c b/lib/ext2fs/blknum.c
 index fd203b4..17df8c7 100644
 --- a/lib/ext2fs/blknum.c
@@ -431,10 +445,18 @@ index 0f8cde8..edbd108 100644
  /*
   * Data structures used by the directory indexing feature
 diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-index 203d222..c8703b3 100644
+index 203d222..dd28c64 100644
 --- a/lib/ext2fs/ext2fs.h
 +++ b/lib/ext2fs/ext2fs.h
-@@ -196,6 +196,7 @@ typedef struct ext2_file *ext2_file_t;
+@@ -113,6 +113,7 @@ typedef struct struct_ext2_filsys *ext2_filsys;
+ 
+ typedef struct ext2fs_struct_generic_bitmap *ext2fs_generic_bitmap;
+ typedef struct ext2fs_struct_generic_bitmap *ext2fs_inode_bitmap;
++typedef struct ext2fs_struct_generic_bitmap *ext2fs_exclude_bitmap;
+ typedef struct ext2fs_struct_generic_bitmap *ext2fs_block_bitmap;
+ 
+ #define EXT2_FIRST_INODE(s)	EXT2_FIRST_INO(s)
+@@ -196,6 +197,7 @@ typedef struct ext2_file *ext2_file_t;
  #define EXT2_FLAG_PRINT_PROGRESS	0x40000
  #define EXT2_FLAG_DIRECT_IO		0x80000
  #define EXT2_FLAG_SKIP_MMP		0x100000
@@ -442,15 +464,15 @@ index 203d222..c8703b3 100644
  
  /*
   * Special flag in the ext2 inode i_flag field that means that this is
-@@ -225,6 +226,7 @@ struct struct_ext2_filsys {
+@@ -225,6 +227,7 @@ struct struct_ext2_filsys {
  	unsigned int			inode_blocks_per_group;
  	ext2fs_inode_bitmap		inode_map;
  	ext2fs_block_bitmap		block_map;
-+	ext2fs_block_bitmap		exclude_map;
++	ext2fs_exclude_bitmap		exclude_map;
  	/* XXX FIXME-64: not 64-bit safe, but not used? */
  	errcode_t (*get_blocks)(ext2_filsys fs, ext2_ino_t ino, blk_t *blocks);
  	errcode_t (*check_directory)(ext2_filsys fs, ext2_ino_t ino);
-@@ -543,6 +545,7 @@ typedef struct ext2_icount *ext2_icount_t;
+@@ -543,6 +546,7 @@ typedef struct ext2_icount *ext2_icount_t;
  #define EXT2_LIB_FEATURE_COMPAT_SUPP	(EXT2_FEATURE_COMPAT_DIR_PREALLOC|\
  					 EXT2_FEATURE_COMPAT_IMAGIC_INODES|\
  					 EXT3_FEATURE_COMPAT_HAS_JOURNAL|\
@@ -458,7 +480,7 @@ index 203d222..c8703b3 100644
  					 EXT2_FEATURE_COMPAT_RESIZE_INODE|\
  					 EXT2_FEATURE_COMPAT_DIR_INDEX|\
  					 EXT2_FEATURE_COMPAT_EXT_ATTR)
-@@ -721,8 +724,10 @@ extern errcode_t ext2fs_copy_bitmap(ext2fs_generic_bitmap src,
+@@ -721,8 +725,10 @@ extern errcode_t ext2fs_copy_bitmap(ext2fs_generic_bitmap src,
  				    ext2fs_generic_bitmap *dest);
  extern errcode_t ext2fs_write_inode_bitmap(ext2_filsys fs);
  extern errcode_t ext2fs_write_block_bitmap (ext2_filsys fs);
@@ -469,7 +491,7 @@ index 203d222..c8703b3 100644
  extern errcode_t ext2fs_allocate_block_bitmap(ext2_filsys fs,
  					      const char *descr,
  					      ext2fs_block_bitmap *ret);
-@@ -1619,6 +1624,14 @@ _INLINE_ void ext2fs_mark_bb_dirty(ext2_filsys fs)
+@@ -1619,6 +1625,14 @@ _INLINE_ void ext2fs_mark_bb_dirty(ext2_filsys fs)
  }
  
  /*
@@ -484,7 +506,7 @@ index 203d222..c8703b3 100644
   * Check to see if a filesystem's inode bitmap is dirty
   */
  _INLINE_ int ext2fs_test_ib_dirty(ext2_filsys fs)
-@@ -1635,6 +1648,14 @@ _INLINE_ int ext2fs_test_bb_dirty(ext2_filsys fs)
+@@ -1635,6 +1649,14 @@ _INLINE_ int ext2fs_test_bb_dirty(ext2_filsys fs)
  }
  
  /*
@@ -500,7 +522,7 @@ index 203d222..c8703b3 100644
   */
  _INLINE_ int ext2fs_group_of_blk(ext2_filsys fs, blk_t blk)
 diff --git a/lib/ext2fs/freefs.c b/lib/ext2fs/freefs.c
-index 28c4132..81d865b 100644
+index 28c4132..488f077 100644
 --- a/lib/ext2fs/freefs.c
 +++ b/lib/ext2fs/freefs.c
 @@ -43,6 +43,8 @@ void ext2fs_free(ext2_filsys fs)
@@ -508,7 +530,7 @@ index 28c4132..81d865b 100644
  	if (fs->inode_map)
  		ext2fs_free_inode_bitmap(fs->inode_map);
 +	if (fs->exclude_map)
-+		ext2fs_free_inode_bitmap(fs->exclude_map);
++		ext2fs_free_exclude_bitmap(fs->exclude_map);
  
  	if (fs->badblocks)
  		ext2fs_badblocks_list_free(fs->badblocks);
@@ -766,49 +788,3 @@ index 1d5f7b2..748ecfe 100644
 -	return write_bitmaps(fs, do_inode, do_block);
 +	return write_bitmaps(fs, do_inode, do_block, do_exclude);
  }
-diff --git a/misc/dumpe2fs.c b/misc/dumpe2fs.c
-index df241c2..d12d4aa 100644
---- a/misc/dumpe2fs.c
-+++ b/misc/dumpe2fs.c
-@@ -222,6 +222,14 @@ static void list_desc (ext2_filsys fs)
- 		print_number(ext2fs_block_bitmap_loc(fs, i));
- 		print_bg_rel_offset(fs, ext2fs_block_bitmap_loc(fs, i), 0,
- 				    first_block, last_block);
-+		if (fs->super->s_feature_compat &
-+				EXT2_FEATURE_COMPAT_EXCLUDE_BITMAP) {
-+			fputs(_(", Exclude bitmap at "), stdout);
-+			print_number(ext2fs_exclude_bitmap_loc(fs, i));
-+			print_bg_rel_offset(fs,
-+					ext2fs_exclude_bitmap_loc(fs, i),
-+					0, first_block, last_block);
-+		}
- 		fputs(_(", Inode bitmap at "), stdout);
- 		print_number(ext2fs_inode_bitmap_loc(fs, i));
- 		print_bg_rel_offset(fs, ext2fs_inode_bitmap_loc(fs, i), 0,
-diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-index 3dcb3b7..ff57a82 100644
---- a/misc/mke2fs.c
-+++ b/misc/mke2fs.c
-@@ -1296,7 +1296,7 @@ profile_error:
- 	}
- 
- 	while ((c = getopt (argc, argv,
--		    "b:cg:i:jl:m:no:qr:s:t:vC:E:FG:I:J:KL:M:N:O:R:ST:U:V")) != EOF) {
-+		    "b:cg:i:jl:m:no:qr:s:t:vC:E:FG:I:J:KL:M:N:O:R:ST:U:Vx")) != EOF) {
- 		switch (c) {
- 		case 'b':
- 			blocksize = strtol(optarg, &tmp, 0);
-@@ -1483,6 +1483,13 @@ profile_error:
- 			/* Print version number and exit */
- 			show_version_only++;
- 			break;
-+		case 'x':
-+			blocksize = sys_page_size;
-+			fs_param.s_log_block_size =
-+				int_log2(blocksize >> EXT2_MIN_BLOCK_LOG_SIZE);
-+			/* create exclude bitmap */
-+			edit_feature("exclude_bitmap", &fs_param.s_feature_compat);
-+			break;
- 		default:
- 			usage();
- 		}
