@@ -418,6 +418,18 @@ index e759b6f..ac80fc5 100644
  ec	EXT2_ET_INODE_TABLE_WRITE,
  	"Can't write an inode table"
  
+diff --git a/lib/ext2fs/ext2_fs.h b/lib/ext2fs/ext2_fs.h
+index 0f8cde8..edbd108 100644
+--- a/lib/ext2fs/ext2_fs.h
++++ b/lib/ext2fs/ext2_fs.h
+@@ -194,6 +194,7 @@ struct ext4_group_desc
+ #define EXT2_BG_INODE_UNINIT	0x0001 /* Inode table/bitmap not initialized */
+ #define EXT2_BG_BLOCK_UNINIT	0x0002 /* Block bitmap not initialized */
+ #define EXT2_BG_INODE_ZEROED	0x0004 /* On-disk itable initialized to zero */
++#define EXT2_BG_EXCLUDE_UNINIT	0x0008 /* Exclude bitmap not initialized */
+ 
+ /*
+  * Data structures used by the directory indexing feature
 diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
 index 203d222..c8703b3 100644
 --- a/lib/ext2fs/ext2fs.h
