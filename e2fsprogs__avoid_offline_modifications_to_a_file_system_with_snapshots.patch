@@ -1,4 +1,4 @@
-e2fsprogs: Avoid offline modifications to a file system with snapshots
+e2fsprogs: avoid offline modifications to a file system with snapshots
 
 From: Amir Goldstein <amir73il@users.sf.net>
 

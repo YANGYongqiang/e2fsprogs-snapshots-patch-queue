@@ -1,4 +1,4 @@
-e2fsprogs: Add exclude bitmap support in tune2fs.
+e2fsprogs: add exclude bitmap support in tune2fs
 
 From: Yongqiang Yang <xiaoqiangnk@gmail.com>
 

@@ -1,4 +1,4 @@
-e2fsprogs: Add exclude bitmap support in debugfs.
+e2fsprogs: add exclude bitmap support in debugfs
 
 From: Yongqiang Yang <xiaoqiangnk@gmail.com>
 

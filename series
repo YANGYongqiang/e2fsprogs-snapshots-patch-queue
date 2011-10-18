@@ -6,7 +6,6 @@ e2fsprogs-Add-exclude-bitmap-support-in-tune2fs.patch
 e2fsprogs-Add-exclude-bitmap-support-in-e2image.patch
 e2fsprogs-Add-exclude-bitmap-support-in-debugfs.patch
 e2fsprogs-Add-exclude-bitmap-support-in-ext2ed.patch
-e2fsprogs__snapshots_on-disk_format_changes.patch
 mke2fs_create_big_journal.patch
 e2fsprogs__avoid_offline_modifications_to_a_file_system_with_snapshots.patch
 tune2fs_discard_snapshot_list.patch

@@ -7,7 +7,20 @@ Snapshot inodes are chained on a list starting at the super block.
 Delete all snapshot inodes on the list and reset exclude bitmap.
 
 Signed-off-by: Amir Goldstein <amir73il@users.sf.net>
-
+Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
+diff --git a/lib/ext2fs/ext2_fs.h b/lib/ext2fs/ext2_fs.h
+index 2cd8467..4c57460 100644
+--- a/lib/ext2fs/ext2_fs.h
++++ b/lib/ext2fs/ext2_fs.h
+@@ -456,7 +456,7 @@ struct ext2_inode_large {
+ #define i_dir_acl	i_size_high
+ 
+ #if defined(__KERNEL__) || defined(__linux__)
+-#define i_reserved1	osd1.linux1.l_i_reserved1
++#define i_next_snapshot	osd1.linux1.l_i_version
+ #define i_frag		osd2.linux2.l_i_frag
+ #define i_fsize		osd2.linux2.l_i_fsize
+ #define i_uid_low	i_uid
 diff --git a/misc/tune2fs.c b/misc/tune2fs.c
 index c74e3df..023956d 100644
 --- a/misc/tune2fs.c

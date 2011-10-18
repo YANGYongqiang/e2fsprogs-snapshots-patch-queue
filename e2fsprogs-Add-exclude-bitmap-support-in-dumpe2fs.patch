@@ -1,4 +1,4 @@
-e2fsprogs: Add exclude bitmap support in dumpe2fs.
+e2fsprogs: add exclude bitmap support in dumpe2fs
 
 From: Yongqiang Yang <xiaoqiangnk@gmail.com>
 
@@ -6,6 +6,30 @@ Exclude bitmap feature is needed by ext4 snapshot.  This patch adds
 exclude bitmap support in dumpe2fs.
 
 Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
+diff --git a/lib/e2p/ls.c b/lib/e2p/ls.c
+index f05e16d..0cd5b37 100644
+--- a/lib/e2p/ls.c
++++ b/lib/e2p/ls.c
+@@ -161,6 +161,19 @@ static void print_super_flags(struct ext2_super_block * s, FILE *f)
+ 		fputs("test_filesystem ", f);
+ 		flags_found++;
+ 	}
++	if (s->s_flags & EXT2_FLAGS_IS_SNAPSHOT) {
++		fputs("is_snapshot ", f);
++		flags_found++;
++	}
++	if (s->s_flags & EXT2_FLAGS_FIX_SNAPSHOT) {
++		fputs("fix_snapshot ", f);
++		flags_found++;
++	}
++	if (s->s_flags & EXT2_FLAGS_FIX_EXCLUDE) {
++		fputs("fix_snapshot_bitmap ", f);
++		flags_found++;
++	}
++
+ 	if (flags_found)
+ 		fputs("\n", f);
+ 	else
 diff --git a/misc/dumpe2fs.c b/misc/dumpe2fs.c
 index df241c2..6b39575 100644
 --- a/misc/dumpe2fs.c

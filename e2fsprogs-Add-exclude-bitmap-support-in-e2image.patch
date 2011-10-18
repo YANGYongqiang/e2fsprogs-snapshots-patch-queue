@@ -1,4 +1,4 @@
-e2fsprogs: Add exclude bitmap support in e2image.
+e2fsprogs: add exclude bitmap support in e2image
 
 From: Yongqiang Yang <xiaoqiangnk@gmail.com>
 

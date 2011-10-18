@@ -433,7 +433,7 @@ index e759b6f..ac80fc5 100644
  	"Can't write an inode table"
  
 diff --git a/lib/ext2fs/ext2_fs.h b/lib/ext2fs/ext2_fs.h
-index 0f8cde8..edbd108 100644
+index 0f8cde8..a1e29d0 100644
 --- a/lib/ext2fs/ext2_fs.h
 +++ b/lib/ext2fs/ext2_fs.h
 @@ -194,6 +194,7 @@ struct ext4_group_desc
@@ -444,6 +444,14 @@ index 0f8cde8..edbd108 100644
  
  /*
   * Data structures used by the directory indexing feature
+@@ -724,6 +725,7 @@ struct ext2_super_block {
+ #define EXT2_FEATURE_INCOMPAT_SUPP    (EXT2_FEATURE_INCOMPAT_FILETYPE| \
+ 				       EXT4_FEATURE_INCOMPAT_MMP)
+ #define EXT2_FEATURE_RO_COMPAT_SUPP	(EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER| \
++					 EXT4_FEATURE_RO_COMPAT_HAS_SNAPSHOT|\
+ 					 EXT2_FEATURE_RO_COMPAT_LARGE_FILE| \
+ 					 EXT4_FEATURE_RO_COMPAT_DIR_NLINK| \
+ 					 EXT2_FEATURE_RO_COMPAT_BTREE_DIR)
 diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
 index 203d222..dd28c64 100644
 --- a/lib/ext2fs/ext2fs.h
