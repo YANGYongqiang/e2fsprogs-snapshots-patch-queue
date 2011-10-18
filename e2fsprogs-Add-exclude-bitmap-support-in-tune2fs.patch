@@ -7,10 +7,10 @@ adds exclude bitmap support in tune2fs.
 
 Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
 diff --git a/misc/tune2fs.c b/misc/tune2fs.c
-index bcada11..f89c854 100644
+index e2fdb4a..5aee387 100644
 --- a/misc/tune2fs.c
 +++ b/misc/tune2fs.c
-@@ -119,7 +119,9 @@ static void usage(void)
+@@ -129,7 +129,9 @@ static void usage(void)
  static __u32 ok_features[3] = {
  	/* Compat */
  	EXT3_FEATURE_COMPAT_HAS_JOURNAL |
@@ -21,7 +21,7 @@ index bcada11..f89c854 100644
  	/* Incompat */
  	EXT2_FEATURE_INCOMPAT_FILETYPE |
  		EXT3_FEATURE_INCOMPAT_EXTENTS |
-@@ -137,7 +139,8 @@ static __u32 clear_ok_features[3] = {
+@@ -149,7 +151,8 @@ static __u32 clear_ok_features[3] = {
  	/* Compat */
  	EXT3_FEATURE_COMPAT_HAS_JOURNAL |
  		EXT2_FEATURE_COMPAT_RESIZE_INODE |
@@ -30,8 +30,8 @@ index bcada11..f89c854 100644
 +		EXT2_FEATURE_COMPAT_EXCLUDE_BITMAP,
  	/* Incompat */
  	EXT2_FEATURE_INCOMPAT_FILETYPE |
- 		EXT4_FEATURE_INCOMPAT_FLEX_BG,
-@@ -270,6 +273,79 @@ static int release_blocks_proc(ext2_filsys fs, blk64_t *blocknr,
+ 		EXT4_FEATURE_INCOMPAT_FLEX_BG |
+@@ -288,6 +291,81 @@ static int release_blocks_proc(ext2_filsys fs, blk64_t *blocknr,
  }
  
  /*
@@ -98,8 +98,10 @@ index bcada11..f89c854 100644
 +		exclude_bitmap = ext2fs_exclude_bitmap_loc(fs, i);
 +		release_blocks_proc(fs, &exclude_bitmap, 0, 0, 0, NULL);
 +		ext2fs_exclude_bitmap_loc_set(fs, i, 0);
-+		gd->bg_flags |= EXT2_BG_EXCLUDE_UNINIT;
-+		ext2fs_group_desc_csum_set(fs, i);
++		if(EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
++					      EXT4_FEATURE_RO_COMPAT_GDT_CSUM))
++			ext2fs_group_desc_csum_set(fs, i);
++		ext2fs_bg_flags_clear(fs, i, EXT2_BG_EXCLUDE_UNINIT);
 +	}
 +
 +	fs->flags &= ~EXT2_FLAG_SUPER_ONLY;
@@ -110,8 +112,8 @@ index bcada11..f89c854 100644
 +/*
   * Remove the journal inode from the filesystem
   */
- static void remove_journal_inode(ext2_filsys fs)
-@@ -341,6 +417,32 @@ static void request_fsck_afterwards(ext2_filsys fs)
+ static errcode_t remove_journal_inode(ext2_filsys fs)
+@@ -363,6 +441,32 @@ static void request_fsck_afterwards(ext2_filsys fs)
  		printf(_("(and reboot afterwards!)\n"));
  }
  
@@ -144,7 +146,7 @@ index bcada11..f89c854 100644
  /*
   * Update the feature set as provided by the user.
   */
-@@ -359,6 +461,10 @@ static void update_feature_set(ext2_filsys fs, char *features)
+@@ -380,6 +484,10 @@ static int update_feature_set(ext2_filsys fs, char *features)
  				 !((&sb->s_feature_compat)[(type)] & (mask)))
  #define FEATURE_CHANGED(type, mask) ((mask) & \
  		     (old_features[(type)] ^ (&sb->s_feature_compat)[(type)]))
@@ -155,7 +157,7 @@ index bcada11..f89c854 100644
  
  	old_features[E2P_FEATURE_COMPAT] = sb->s_feature_compat;
  	old_features[E2P_FEATURE_INCOMPAT] = sb->s_feature_incompat;
-@@ -419,6 +525,16 @@ static void update_feature_set(ext2_filsys fs, char *features)
+@@ -507,6 +615,16 @@ mmp_error:
  		sb->s_feature_compat &= ~EXT3_FEATURE_COMPAT_HAS_JOURNAL;
  	}
  
@@ -172,7 +174,7 @@ index bcada11..f89c854 100644
  	if (FEATURE_ON(E2P_FEATURE_COMPAT, EXT2_FEATURE_COMPAT_DIR_INDEX)) {
  		if (!sb->s_def_hash_version)
  			sb->s_def_hash_version = EXT2_HASH_HALF_MD4;
-@@ -463,7 +579,7 @@ static void update_feature_set(ext2_filsys fs, char *features)
+@@ -551,7 +669,7 @@ mmp_error:
  		for (i = 0; i < fs->group_desc_count; i++) {
  			gd = ext2fs_group_desc(fs, fs->group_desc, i);
  			if ((gd->bg_flags & EXT2_BG_INODE_ZEROED) == 0) {
@@ -181,7 +183,7 @@ index bcada11..f89c854 100644
  				 * XXX what we really should do is zap
  				 * uninitialized inode tables instead.
  				 */
-@@ -1073,6 +1189,10 @@ static int ext2fs_is_meta_block(ext2_filsys fs, blk_t blk)
+@@ -1318,6 +1436,10 @@ static int ext2fs_is_meta_block(ext2_filsys fs, blk_t blk)
  	group = ext2fs_group_of_blk(fs, blk);
  	if (ext2fs_block_bitmap_loc(fs, group) == blk)
  		return 1;
@@ -192,7 +194,7 @@ index bcada11..f89c854 100644
  	if (ext2fs_inode_bitmap_loc(fs, group) == blk)
  		return 1;
  	return 0;
-@@ -1291,6 +1411,17 @@ static int group_desc_scan_and_fix(ext2_filsys fs, ext2fs_block_bitmap bmap)
+@@ -1536,6 +1658,17 @@ static int group_desc_scan_and_fix(ext2_filsys fs, ext2fs_block_bitmap bmap)
  			ext2fs_block_bitmap_loc_set(fs, i, new_blk);
  		}
  
