@@ -1,5 +1,6 @@
-e2fsprogs__create-check_the_exclude_bitmap.patch
+e2fsprogs_add_exclude_bitmap_support_in_libext2fs.patch
 e2fsprogs-Add-exclude-bitmap-support-in-mkfs.patch
+e2fsprogs__create-check_the_exclude_bitmap.patch
 e2fsprogs-Add-exclude-bitmap-support-in-e2fsck.patch
 e2fsprogs-Add-exclude-bitmap-support-in-dumpe2fs.patch
 e2fsprogs-Add-exclude-bitmap-support-in-tune2fs.patch

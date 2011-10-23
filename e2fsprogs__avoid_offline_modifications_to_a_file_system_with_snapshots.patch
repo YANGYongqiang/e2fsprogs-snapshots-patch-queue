@@ -150,15 +150,13 @@ index f980962..e2ef053 100644
  		read_bad_blocks_file(ctx, bad_blocks_file, replace_bad_blocks);
  	else if (cflag)
 diff --git a/lib/e2p/feature.c b/lib/e2p/feature.c
-index 63486f3..a54a4c4 100644
+index 63486f3..b5160e7 100644
 --- a/lib/e2p/feature.c
 +++ b/lib/e2p/feature.c
-@@ -58,6 +58,10 @@ static struct feature feature_list[] = {
+@@ -58,6 +58,8 @@ static struct feature feature_list[] = {
  			"dir_nlink" },
  	{	E2P_FEATURE_RO_INCOMPAT, EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE,
  			"extra_isize" },
-+	{	E2P_FEATURE_RO_INCOMPAT, EXT4_FEATURE_RO_COMPAT_HAS_SNAPSHOT,
-+			"snapshots" },
 +	{	E2P_FEATURE_RO_INCOMPAT, EXT4_FEATURE_RO_COMPAT_HAS_SNAPSHOT,
 +			"has_snapshot" },
  	{	E2P_FEATURE_RO_INCOMPAT, EXT4_FEATURE_RO_COMPAT_QUOTA,
@@ -189,7 +187,7 @@ index 2dc28e7..857f5fb 100644
  		EXT4_FEATURE_RO_COMPAT_DIR_NLINK|
  		EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE|
 diff --git a/misc/tune2fs.c b/misc/tune2fs.c
-index 39986af..c74e3df 100644
+index 02edcd6..22a5230 100644
 --- a/misc/tune2fs.c
 +++ b/misc/tune2fs.c
 @@ -139,6 +139,7 @@ static __u32 ok_features[3] = {
@@ -208,7 +206,7 @@ index 39986af..c74e3df 100644
  		EXT4_FEATURE_RO_COMPAT_HUGE_FILE|
  		EXT4_FEATURE_RO_COMPAT_DIR_NLINK|
  		EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE|
-@@ -491,6 +493,19 @@ static int update_feature_set(ext2_filsys fs, char *features)
+@@ -493,6 +495,19 @@ static int update_feature_set(ext2_filsys fs, char *features)
  	old_features[E2P_FEATURE_INCOMPAT] = sb->s_feature_incompat;
  	old_features[E2P_FEATURE_RO_INCOMPAT] = sb->s_feature_ro_compat;
  
@@ -228,7 +226,7 @@ index 39986af..c74e3df 100644
  	if (e2p_edit_feature2(features, &sb->s_feature_compat,
  			      ok_features, clear_ok_features,
  			      &type_err, &mask_err)) {
-@@ -498,6 +513,12 @@ static int update_feature_set(ext2_filsys fs, char *features)
+@@ -500,6 +515,12 @@ static int update_feature_set(ext2_filsys fs, char *features)
  			fprintf(stderr,
  				_("Invalid filesystem option set: %s\n"),
  				features);
@@ -241,7 +239,7 @@ index 39986af..c74e3df 100644
  		else if (type_err & E2P_FEATURE_NEGATE_FLAG)
  			fprintf(stderr, _("Clearing filesystem feature '%s' "
  					  "not supported.\n"),
-@@ -623,6 +644,35 @@ mmp_error:
+@@ -625,6 +646,35 @@ mmp_error:
  		add_exclude_bitmaps(fs);
  	}
  

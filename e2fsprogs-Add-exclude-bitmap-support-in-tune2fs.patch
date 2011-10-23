@@ -7,7 +7,7 @@ adds exclude bitmap support in tune2fs.
 
 Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
 diff --git a/misc/tune2fs.c b/misc/tune2fs.c
-index e2fdb4a..5aee387 100644
+index e2fdb4a..02edcd6 100644
 --- a/misc/tune2fs.c
 +++ b/misc/tune2fs.c
 @@ -129,7 +129,9 @@ static void usage(void)
@@ -98,10 +98,10 @@ index e2fdb4a..5aee387 100644
 +		exclude_bitmap = ext2fs_exclude_bitmap_loc(fs, i);
 +		release_blocks_proc(fs, &exclude_bitmap, 0, 0, 0, NULL);
 +		ext2fs_exclude_bitmap_loc_set(fs, i, 0);
++		ext2fs_bg_flags_clear(fs, i, EXT2_BG_EXCLUDE_UNINIT);
 +		if(EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
 +					      EXT4_FEATURE_RO_COMPAT_GDT_CSUM))
 +			ext2fs_group_desc_csum_set(fs, i);
-+		ext2fs_bg_flags_clear(fs, i, EXT2_BG_EXCLUDE_UNINIT);
 +	}
 +
 +	fs->flags &= ~EXT2_FLAG_SUPER_ONLY;
