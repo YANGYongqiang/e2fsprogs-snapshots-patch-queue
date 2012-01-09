@@ -7,10 +7,10 @@ adds exclude bitmap support in debugfs.
 
 Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
 diff --git a/debugfs/debug_cmds.ct b/debugfs/debug_cmds.ct
-index 4e9e831..aa65c23 100644
+index af969b1..73b158d 100644
 --- a/debugfs/debug_cmds.ct
 +++ b/debugfs/debug_cmds.ct
-@@ -88,6 +88,15 @@ request do_setb, "Set a block's in-use flag",
+@@ -94,6 +94,15 @@ request do_setb, "Set a block's in-use flag",
  request do_testb, "Test a block's in-use flag",
  	testb;
  
@@ -27,10 +27,10 @@ index 4e9e831..aa65c23 100644
  	modify_inode, mi;
  
 diff --git a/debugfs/debugfs.c b/debugfs/debugfs.c
-index cfaaed1..c555ed1 100644
+index b7ff00d..51f38ef 100644
 --- a/debugfs/debugfs.c
 +++ b/debugfs/debugfs.c
-@@ -96,6 +96,11 @@ static void open_filesystem(char *device, int open_flags, blk64_t superblock,
+@@ -98,6 +98,11 @@ static void open_filesystem(char *device, int open_flags, blk64_t superblock,
  			com_err(device, retval, "while reading inode bitmap");
  			goto errout;
  		}
@@ -42,7 +42,7 @@ index cfaaed1..c555ed1 100644
  		retval = ext2fs_read_block_bitmap(current_fs);
  		if (retval) {
  			com_err(device, retval, "while reading block bitmap");
-@@ -350,12 +355,14 @@ void do_show_super_stats(int argc, char *argv[])
+@@ -361,12 +366,14 @@ void do_show_super_stats(int argc, char *argv[])
  					      EXT4_FEATURE_RO_COMPAT_GDT_CSUM);
  	for (i = 0; i < current_fs->group_desc_count; i++) {
  		fprintf(out, " Group %2d: block bitmap at %llu, "
@@ -57,7 +57,7 @@ index cfaaed1..c555ed1 100644
  		        ext2fs_inode_bitmap_loc(current_fs, i),
  			ext2fs_inode_table_loc(current_fs, i),
  		        ext2fs_bg_free_blocks_count(current_fs, i), units,
-@@ -373,10 +380,12 @@ void do_show_super_stats(int argc, char *argv[])
+@@ -384,10 +391,12 @@ void do_show_super_stats(int argc, char *argv[])
  				ext2fs_bg_itable_unused(current_fs, i) != 1 ?
  				"inodes" : "inode");
  		first = 1;
@@ -74,10 +74,10 @@ index cfaaed1..c555ed1 100644
  		if (gdt_csum) {
  			fprintf(out, "%sChecksum 0x%04x",
  				first ? "           [":", ", ext2fs_bg_checksum(current_fs, i));
-@@ -1072,6 +1081,70 @@ void do_testb(int argc, char *argv[])
- 	}
+@@ -1090,6 +1099,73 @@ void do_testb(int argc, char *argv[])
  }
  
+ #ifndef READ_ONLY
 +void do_freee(int argc, char *argv[])
 +{
 +	blk64_t block;
@@ -122,6 +122,7 @@ index cfaaed1..c555ed1 100644
 +	}
 +	ext2fs_mark_eb_dirty(current_fs);
 +}
++#endif
 +
 +void do_teste(int argc, char *argv[])
 +{
@@ -142,14 +143,16 @@ index cfaaed1..c555ed1 100644
 +	}
 +}
 +
++
++#ifndef READ_ONLY
  static void modify_u8(char *com, const char *prompt,
  		      const char *format, __u8 *val)
  {
 diff --git a/debugfs/set_fields.c b/debugfs/set_fields.c
-index 1d5d630..eb0ea98 100644
+index 08bfd8d..afb2fb4 100644
 --- a/debugfs/set_fields.c
 +++ b/debugfs/set_fields.c
-@@ -205,6 +205,7 @@ static struct field_set_info inode_fields[] = {
+@@ -208,6 +208,7 @@ static struct field_set_info inode_fields[] = {
  
  static struct field_set_info ext2_bg_fields[] = {
  	{ "block_bitmap", &set_gd.bg_block_bitmap, NULL, 4, parse_uint },
